@@ -1,0 +1,134 @@
+{
+  "name": "EmpresasAtivasBR — Receber e Processar Lista",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "empresas-export",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook Receber Lista",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "webhookId": "empresas-export"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formata e enriquece os dados recebidos\nconst body = $input.first().json.body;\nconst empresas = body.empresas || [];\n\nreturn empresas.map(e => ({\n  json: {\n    ...e,\n    estado:     body.estado,\n    municipio:  body.municipio,\n    cnae:       body.cnae,\n    cnae_desc:  body.cnae_desc,\n    data_envio: new Date().toLocaleString('pt-BR'),\n    // WhatsApp formatado para Evolution API / Z-API\n    tel_wa: e.tel1 ? '+55' + e.tel1.replace(/\\D/g,'') : '',\n  }\n}));"
+      },
+      "name": "Formatar Empresas",
+      "type": "n8n-nodes-base.code",
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Empresas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CNPJ":        "={{ $json.cnpj }}",
+            "Razão Social":"={{ $json.razao }}",
+            "Fantasia":    "={{ $json.fantasia }}",
+            "Tipo":        "={{ $json.tipo }}",
+            "Porte":       "={{ $json.porte }}",
+            "Abertura":    "={{ $json.abertura }}",
+            "Telefone":    "={{ $json.tel1 }}",
+            "Email":       "={{ $json.email }}",
+            "Estado":      "={{ $json.estado }}",
+            "Município":   "={{ $json.municipio }}",
+            "CNAE":        "={{ $json.cnae }}",
+            "Atividade":   "={{ $json.cnae_desc }}",
+            "WhatsApp":    "={{ $json.wpp }}",
+            "Google Maps": "={{ $json.maps }}",
+            "LinkedIn":    "={{ $json.linkedin }}",
+            "Instagram":   "={{ $json.instagram }}",
+            "TikTok":      "={{ $json.tiktok }}",
+            "Data Envio":  "={{ $json.data_envio }}"
+          }
+        }
+      },
+      "name": "Google Sheets — Salvar",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{
+            "value1": "={{ $json.wpp }}",
+            "operation": "isNotEmpty"
+          }]
+        }
+      },
+      "name": "Tem WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:8080/message/sendText/NOME_DA_INSTANCIA",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{
+            "name": "apikey",
+            "value": "SUA_EVOLUTION_API_KEY"
+          }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number",  "value": "={{ $json.tel_wa }}" },
+            { "name": "text",    "value": "=Olá {{ $json.razao }}, somos da [EMPRESA]. Identificamos que sua empresa atua na área de {{ $json.cnae_desc }} e gostaríamos de apresentar uma solução. Podemos conversar? 😊" }
+          ]
+        }
+      },
+      "name": "Evolution API — Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [930, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true, \"recebidas\": {{ $('Webhook Receber Lista').first().json.body.empresas.length }} }"
+      },
+      "name": "Resposta 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [930, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Receber Lista": {
+      "main": [[ { "node": "Formatar Empresas", "type": "main", "index": 0 } ]]
+    },
+    "Formatar Empresas": {
+      "main": [[
+        { "node": "Google Sheets — Salvar", "type": "main", "index": 0 },
+        { "node": "Tem WhatsApp?",          "type": "main", "index": 0 },
+        { "node": "Resposta 200",           "type": "main", "index": 0 }
+      ]]
+    },
+    "Tem WhatsApp?": {
+      "main": [
+        [ { "node": "Evolution API — Enviar WhatsApp", "type": "main", "index": 0 } ],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateId": "empresas-ativas-brasil",
+    "instanceId": ""
+  }
+}
