@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EmpresasAtivasBR — Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    /* ── HEADER ── */
+    #hdr {
+      flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px;
+      background: linear-gradient(90deg, #0c1c42 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--brd);
+      z-index: 999;
+    }
+    #logo {
+      font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 800;
+      color: var(--t1); white-space: nowrap; flex-shrink: 0;
+      text-decoration: none;
+    }
+    #logo span { color: var(--teal); }
+    #crumbs {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; flex: 1; overflow: hidden; min-width: 0;
+    }
+    .crumb {
+      cursor: pointer; color: var(--acc); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; transition: color .15s;
+    }
+    .crumb:hover { color: var(--teal); }
+    .crumb.cur { color: var(--t1); cursor: default; }
+    .csep { color: var(--brd2); flex-shrink: 0; }
+    #hdr-stat {
+      font-size: 11px; color: var(--t2); background: var(--card);
+      border: 1px solid var(--brd); padding: 4px 12px; border-radius: 20px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── LAYOUT ── */
+    #main { flex: 1; display: flex; overflow: hidden; }
+
+    /* MAP */
+    #map-wrap {
+      flex: 1; min-width: 0; position: relative;
+      background: #07101f; overflow: hidden;
+    }
+    #map-wrap svg { width: 100%; height: 100%; display: block; }
+    .state-path { cursor: pointer; transition: fill .18s; }
+    #map-tip {
+      position: absolute; pointer-events: none;
+      background: #1a2744; border: 1px solid #1e3a8a; border-radius: 7px;
+      padding: 8px 13px; font-size: 12px; color: #eef2ff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.7); z-index: 10;
+      display: none; white-space: nowrap;
+    }
+    #map-legend {
+      position: absolute; bottom: 16px; left: 16px; z-index: 10;
+      background: rgba(8,14,30,.88); border: 1px solid var(--brd);
+      border-radius: 8px; padding: 10px 14px; font-size: 11px; color: var(--t2);
+    }
+    #map-legend b { display: block; color: var(--t1); margin-bottom: 6px; font-size: 11px; }
+    .leg-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .leg-sw { width: 18px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    #map-controls {
+      position: absolute; top: 12px; right: 12px; z-index: 10;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .map-btn {
+      width: 32px; height: 32px; background: var(--card); border: 1px solid var(--brd);
+      color: var(--t2); border-radius: 6px; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .map-btn:hover { background: var(--card2); color: var(--t1); }
+
+    /* NAV PANEL */
+    #nav {
+      width: 360px; flex-shrink: 0; background: var(--bg);
+      border-left: 1px solid var(--brd);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #nav-head {
+      padding: 14px 16px 10px; border-bottom: 1px solid var(--brd);
+      background: var(--surf); flex-shrink: 0;
+    }
+    #nav-title {
+      font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700;
+      color: var(--t1); margin-bottom: 3px;
+    }
+    #nav-sub { font-size: 11px; color: var(--t2); }
+    #nav-srch {
+      padding: 8px 12px; border-bottom: 1px solid var(--brd); flex-shrink: 0;
+    }
+    #nav-srch input {
+      width: 100%; padding: 7px 12px; background: var(--card);
+      border: 1px solid var(--brd); border-radius: 6px;
+      color: var(--t1); font-size: 13px; outline: none;
+    }
+    #nav-srch input:focus { border-color: var(--acc); }
+    #nav-srch input::placeholder { color: var(--t3); }
+    #nav-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+    .item {
+      padding: 10px 13px; margin-bottom: 3px; border-radius: 7px;
+      cursor: pointer; border: 1px solid transparent; background: var(--surf);
+      transition: all .15s; display: flex; align-items: center;
+      justify-content: space-between; gap: 8px;
+    }
+    .item:hover { background: var(--card); border-color: var(--acc); transform: translateX(3px); }
+    .i-title { font-size: 13px; font-weight: 600; color: var(--t1);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .i-sub { font-size: 11px; color: var(--t2); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .i-badge { font-size: 12px; font-weight: 700; color: var(--teal);
+      white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    /* TABLE VIEW */
+    #tbl-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #tbl-bar {
+      flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px; background: var(--surf);
+      border-bottom: 1px solid var(--brd); flex-wrap: wrap;
+    }
+    #tbl-bar input {
+      padding: 7px 12px; background: var(--card); border: 1px solid var(--brd);
+      border-radius: 6px; color: var(--t1); font-size: 13px; outline: none; width: 210px;
+    }
+    #tbl-bar input:focus { border-color: var(--acc); }
+    #tbl-bar input::placeholder { color: var(--t3); }
+    #tbl-cnt {
+      margin-left: auto; font-size: 12px; color: var(--t2); background: var(--card);
+      padding: 4px 12px; border-radius: 20px; border: 1px solid var(--brd); white-space: nowrap;
+    }
+    .demo-note {
+      font-size: 11px; color: var(--amb);
+      background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25);
+      padding: 3px 10px; border-radius: 4px; flex-shrink: 0;
+    }
+    #tbl-scroll { flex: 1; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    thead { position: sticky; top: 0; z-index: 5; }
+    th {
+      background: var(--surf); color: var(--t2); padding: 9px 12px;
+      text-align: left; border-bottom: 2px solid var(--brd2);
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; white-space: nowrap;
+    }
+    td {
+      padding: 9px 12px; border-bottom: 1px solid rgba(30,58,138,.3);
+      color: var(--t1); font-size: 12px; vertical-align: top;
+    }
+    tr:hover td { background: rgba(59,130,246,.05); }
+    .td-cnpj { font-family: monospace; font-size: 11px; color: var(--teal); white-space: nowrap; }
+    .bm { display: inline-block; padding: 2px 8px; background: rgba(16,185,129,.12);
+      border: 1px solid var(--grn); color: var(--grn); border-radius: 20px; font-size: 10px; font-weight: 700; }
+    .bf { display: inline-block; padding: 2px 8px; background: rgba(59,130,246,.12);
+      border: 1px solid var(--acc); color: var(--acc); border-radius: 20px; font-size: 10px; font-weight: 700; }
+    .lks { white-space: nowrap; }
+    .lk {
+      display: inline-flex; align-items: center; gap: 2px; padding: 3px 6px;
+      border-radius: 4px; text-decoration: none; font-size: 10px; font-weight: 700;
+      margin: 1px; transition: opacity .15s;
+    }
+    .lk:hover { opacity: .8; }
+    .lk-mp { background: rgba(234,179,8,.1); color: #eab308; border: 1px solid rgba(234,179,8,.3); }
+    .lk-wp { background: rgba(37,211,102,.1); color: #25d366; border: 1px solid rgba(37,211,102,.3); }
+    .lk-li { background: rgba(10,102,194,.12); color: #0a66c2; border: 1px solid rgba(10,102,194,.3); }
+    .lk-ig { background: rgba(225,48,108,.1); color: #e1306c; border: 1px solid rgba(225,48,108,.3); }
+    .lk-fb { background: rgba(24,119,242,.1); color: #1877f2; border: 1px solid rgba(24,119,242,.3); }
+    .lk-wb { background: rgba(139,92,246,.1); color: #8b5cf6; border: 1px solid rgba(139,92,246,.3); }
+
+    /* CSV MODAL */
+    #csv-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000; padding: 20px;
+    }
+    #csv-box {
+      background: var(--surf); border: 1px solid var(--brd); border-radius: 10px;
+      width: 100%; max-width: 700px; max-height: 80vh;
+      display: flex; flex-direction: column; gap: 12px; padding: 20px;
+    }
+    #csv-box h3 { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: var(--teal); margin: 0; }
+    #csv-box p { font-size: 12px; color: var(--t2); margin: 0; }
+    #csv-ta {
+      flex: 1; background: var(--bg); border: 1px solid var(--brd); border-radius: 6px;
+      color: var(--t1); font-family: monospace; font-size: 11px; padding: 10px;
+      resize: none; outline: none; min-height: 200px;
+    }
+
+    /* LOADING / EMPTY */
+    .ld { display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 40px; gap: 10px; color: var(--t2); font-size: 13px; }
+    .sp {
+      width: 32px; height: 32px; border: 3px solid var(--card2);
+      border-top-color: var(--acc); border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .emp { text-align: center; padding: 40px; color: var(--t2); font-size: 13px; }
+
+    @media (max-width: 680px) {
+      #main { flex-direction: column; }
+      #map-wrap { height: 240px; flex: none; }
+      #nav { width: 100%; border-left: none; border-top: 1px solid var(--brd); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="hdr">
+  <a href="/" id="logo">Empresas<span>Ativas</span>BR</a>
+  <nav id="crumbs"></nav>
+  <span id="hdr-stat">23.148.920 empresas ativas</span>
+</header>
+
+<!-- MAIN: MAP + NAV -->
+<div id="main">
+  <div id="map-wrap">
+    <div id="map-tip"></div>
+    <div id="map-controls">
+      <button class="map-btn" onclick="zoomIn()" title="Zoom +">+</button>
+      <button class="map-btn" onclick="zoomOut()" title="Zoom −">−</button>
+      <button class="map-btn" onclick="resetMapZoom()" title="Resetar" style="font-size:13px">⌂</button>
+    </div>
+    <div id="map-legend">
+      <b>Empresas ativas</b>
+      <div class="leg-row"><div class="leg-sw" style="background:#1d3461"></div> &lt; 200k</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#1e4d8c"></div> 200k – 1M</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#2563eb"></div> 1M – 3M</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#60a5fa"></div> 3M+</div>
+    </div>
+  </div>
+
+  <div id="nav">
+    <div id="nav-head">
+      <div id="nav-title">Estados do Brasil</div>
+      <div id="nav-sub">Clique no mapa ou escolha na lista</div>
+    </div>
+    <div id="nav-srch">
+      <input type="text" id="srch" placeholder="Buscar estado..." autocomplete="off" oninput="onSearch(this.value)">
+    </div>
+    <div id="nav-list">
+      <div class="ld"><div class="sp"></div>Carregando mapa...</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE VIEW (full-width, hidden until CNAE selected) -->
+<div id="tbl-view" hidden>
+  <div id="tbl-bar">
+    <input type="text" id="tbl-srch" placeholder="🔍 Filtrar empresas..." oninput="onTblSearch(this.value)">
+    <button class="btn btn-ghost btn-sm" onclick="backToMun()">← Mudar CNAE</button>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()">🏠 Início</button>
+    <button class="btn btn-teal btn-sm" id="exp-btn" onclick="exportCSV()">↓ Exportar CSV</button>
+    <span class="demo-note">⚠ Dados demonstrativos</span>
+    <span id="tbl-cnt">0 empresas</span>
+  </div>
+  <div id="tbl-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>CNPJ</th>
+          <th>Razão Social</th>
+          <th>Fantasia</th>
+          <th>Tipo</th>
+          <th>Abertura</th>
+          <th>Porte</th>
+          <th>Telefone</th>
+          <th>E-mail</th>
+          <th>Endereço · Bairro</th>
+          <th>CEP</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CSV Modal -->
+<div id="csv-modal" hidden>
+  <div id="csv-box">
+    <h3>CSV gerado — copie e cole no Excel</h3>
+    <p>Selecione tudo (Ctrl+A) e copie (Ctrl+C) ou clique no botão abaixo.</p>
+    <textarea id="csv-ta" readonly spellcheck="false"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-teal btn-sm" onclick="copiarCSV()">📋 Copiar tudo</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('csv-modal').hidden=true">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/data.js"></script>
+<script src="../assets/js/generator.js"></script>
+<script src="../assets/js/map.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

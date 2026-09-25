@@ -1,0 +1,69 @@
+/* ══════════════════════════════════════════════
+   Empresas Ativas Brasil — Design System
+   ══════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg:    #080e1e;
+  --surf:  #0f1829;
+  --card:  #152040;
+  --card2: #1a2a52;
+  --brd:   #1e3a8a;
+  --brd2:  #2563eb;
+  --acc:   #3b82f6;
+  --teal:  #14b8a6;
+  --grn:   #10b981;
+  --amb:   #f59e0b;
+  --red:   #ef4444;
+  --t1:    #eef2ff;
+  --t2:    #8b9dc3;
+  --t3:    #4a6fa5;
+  --radius: 8px;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border: none; border-radius: var(--radius);
+  cursor: pointer; font-size: 14px; font-weight: 600;
+  text-decoration: none; transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--acc); color: #fff; }
+.btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+.btn-teal { background: var(--teal); color: #fff; }
+.btn-teal:hover { background: #0d9488; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--t2); border: 1px solid var(--brd); }
+.btn-ghost:hover { background: var(--card); color: var(--t1); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-lg { padding: 14px 28px; font-size: 16px; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card); border: 1px solid var(--brd);
+  border-radius: var(--radius); padding: 20px;
+}
+
+/* ── SCROLLBARS ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--brd); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brd2); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.badge-grn { background: rgba(16,185,129,.12); border: 1px solid var(--grn); color: var(--grn); }
+.badge-acc { background: rgba(59,130,246,.12); border: 1px solid var(--acc); color: var(--acc); }
+.badge-amb { background: rgba(245,158,11,.12); border: 1px solid var(--amb); color: var(--amb); }
