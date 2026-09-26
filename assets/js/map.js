@@ -86,6 +86,12 @@ function _renderGeoJSON() {
   const tip  = document.getElementById('map-tip');
   const wrap = document.getElementById('map-wrap');
 
+  /* Ajusta projeção automaticamente para caber no container */
+  const W = wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.72);
+  const H = wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.85);
+  _projFn.fitExtent([[20, 20], [W - 20, H - 20]], _geoData);
+  _pathFn = d3.geoPath().projection(_projFn);
+
   _gEl.selectAll('path.state-path')
     .data(_geoData.features)
     .join('path')
