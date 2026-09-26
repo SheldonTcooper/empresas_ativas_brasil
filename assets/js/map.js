@@ -40,19 +40,15 @@ function initMap() {
   const wrap = document.getElementById('map-wrap');
   const hdrH = hdr ? hdr.offsetHeight : 52;
 
-  _mapW = window.innerWidth;
-  _mapH = window.innerHeight - hdrH;
+  /* clientWidth/Height exclui scrollbar e é mais confiável que window.innerWidth */
+  _mapW = document.documentElement.clientWidth  || window.innerWidth;
+  _mapH = document.documentElement.clientHeight - hdrH || (window.innerHeight - hdrH);
 
-  /* ── Forçar dimensões via JS (ignora todo o CSS de layout) ── */
-  wrap.setAttribute('style', [
-    'position:absolute',
-    'top:'    + hdrH  + 'px',
-    'left:0',
-    'width:'  + _mapW + 'px',
-    'height:' + _mapH + 'px',
-    'background:#07101f',
-    'overflow:hidden',
-  ].join(';') + ';');
+  /* ── position:fixed: relativo ao viewport, escapa overflow:hidden do pai ── */
+  wrap.setAttribute('style',
+    'position:fixed;top:' + hdrH + 'px;left:0;' +
+    'width:'  + _mapW + 'px;height:' + _mapH + 'px;' +
+    'background:#07101f;overflow:hidden;z-index:2;');
 
   /* Limpa SVG anterior */
   d3.select(wrap).selectAll('svg').remove();
