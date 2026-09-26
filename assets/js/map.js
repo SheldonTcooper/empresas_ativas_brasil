@@ -29,8 +29,12 @@ function _stateColor(cod) {
 }
 
 function initMap() {
+  if (typeof d3 === 'undefined') { console.error('[map] D3 não carregado'); return; }
+
   const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
+  /* clientWidth/Height pode ser 0 se o flex-layout ainda não computou */
+  const W = wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.72);
+  const H = wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.85);
 
   _svgEl = d3.select('#map-wrap').append('svg')
     .attr('width', '100%').attr('height', '100%')
@@ -51,16 +55,22 @@ function initMap() {
 
   _pathFn = d3.geoPath().projection(_projFn);
 
+  /* Renderiza círculos imediatamente — sem esperar rede */
+  _renderFallback();
+
+  /* Tenta IBGE em background para upgrade para polígonos */
   const IBGE_URL =
     'https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR' +
     '?formato=application/vnd.geo%2Bjson&divisao=UF&resolucao=2';
 
-  const fallbackTimer = setTimeout(() => { if (!_geoData) _renderFallback(); }, 6000);
-
   fetch(IBGE_URL)
-    .then(r => { if (!r.ok) throw new Error('API error'); return r.json(); })
-    .then(gj => { clearTimeout(fallbackTimer); _geoData = gj; _renderGeoJSON(); })
-    .catch(() => { clearTimeout(fallbackTimer); _renderFallback(); });
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(gj => {
+      _geoData = gj;
+      _gEl.selectAll('*').remove(); /* remove circles */
+      _renderGeoJSON();
+    })
+    .catch(() => { /* circles already showing — nothing to do */ });
 }
 
 function _renderGeoJSON() {
