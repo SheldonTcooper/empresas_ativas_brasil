@@ -2,7 +2,7 @@
    map.js — D3 choropleth map of Brazil
    ═══════════════════════════════════════════════ */
 
-let _svgEl, _projFn, _pathFn, _geoData, _zoomBeh, _gEl;
+let _svgEl, _projFn, _geoData, _zoomBeh, _gEl;
 let _mapW = 0, _mapH = 0;
 
 const _colorScale = d3.scaleThreshold()
@@ -33,6 +33,46 @@ function _stateColor(cod) {
   return e ? _colorScale(e.e) : '#1a2744';
 }
 
+/* Convert a GeoJSON feature to an SVG path d-string without D3's spherical clip rectangle */
+function _featureToD(feat) {
+  const geom = feat.geometry;
+  if (!geom) return '';
+
+  function ringToD(ring) {
+    let d = '';
+    for (let i = 0; i < ring.length; i++) {
+      const pt = _projFn(ring[i]);
+      if (!pt || isNaN(pt[0])) continue;
+      d += (i === 0 ? 'M' : 'L') + pt[0].toFixed(1) + ',' + pt[1].toFixed(1);
+    }
+    return d ? d + 'Z' : '';
+  }
+
+  if (geom.type === 'Polygon') {
+    return geom.coordinates.map(ringToD).join('');
+  }
+  if (geom.type === 'MultiPolygon') {
+    return geom.coordinates.flat().map(ringToD).join('');
+  }
+  return '';
+}
+
+/* Approximate visual centroid: average of the largest ring's projected coordinates */
+function _featureCentroid(feat) {
+  const geom = feat.geometry;
+  if (!geom) return [NaN, NaN];
+  let rings = geom.type === 'Polygon'      ? geom.coordinates :
+              geom.type === 'MultiPolygon' ? geom.coordinates.flat() : [];
+  const ring = rings.reduce((a, b) => b.length > a.length ? b : a, []);
+  if (!ring.length) return [NaN, NaN];
+  let sumX = 0, sumY = 0, n = 0;
+  ring.forEach(pt => {
+    const p = _projFn(pt);
+    if (p && !isNaN(p[0])) { sumX += p[0]; sumY += p[1]; n++; }
+  });
+  return n ? [sumX / n, sumY / n] : [NaN, NaN];
+}
+
 function initMap() {
   if (typeof d3 === 'undefined') { console.error('[map] D3 ausente'); return; }
 
@@ -40,24 +80,23 @@ function initMap() {
   const wrap = document.getElementById('map-wrap');
   const hdrH = hdr ? hdr.offsetHeight : 52;
 
-  /* clientWidth/Height exclui scrollbar e é mais confiável que window.innerWidth */
   _mapW = document.documentElement.clientWidth  || window.innerWidth;
-  _mapH = document.documentElement.clientHeight - hdrH || (window.innerHeight - hdrH);
+  _mapH = (document.documentElement.clientHeight || window.innerHeight) - hdrH;
 
-  /* ── position:fixed: relativo ao viewport, escapa overflow:hidden do pai ── */
+  /* position:fixed escapa overflow:hidden de qualquer ancestral */
   wrap.setAttribute('style',
     'position:fixed;top:' + hdrH + 'px;left:0;' +
     'width:'  + _mapW + 'px;height:' + _mapH + 'px;' +
     'background:#07101f;overflow:hidden;z-index:2;');
 
-  /* Limpa SVG anterior */
   d3.select(wrap).selectAll('svg').remove();
   _geoData = null;
 
   _svgEl = d3.select(wrap).append('svg')
     .attr('width',  _mapW)
     .attr('height', _mapH)
-    .style('display', 'block');
+    .style('display', 'block')
+    .attr('overflow', 'hidden');
 
   _gEl = _svgEl.append('g').attr('class', 'geo-group');
 
@@ -68,11 +107,9 @@ function initMap() {
 
   _projFn = d3.geoMercator();
   _projFn.fitExtent([[24, 24], [_mapW - 24, _mapH - 24]], _BRAZIL_BOX);
-  _pathFn = d3.geoPath().projection(_projFn);
 
   _renderFallback();
 
-  /* Uma única chamada IBGE para todos os 27 estados */
   fetch('https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR' +
         '?intrarregiao=UF&resolucao=2&formato=application/vnd.geo%2Bjson')
     .then(r => { if (!r.ok) throw r.status; return r.json(); })
@@ -89,15 +126,11 @@ function _renderGeoJSON() {
   const wrap = document.getElementById('map-wrap');
   const tip  = document.getElementById('map-tip');
 
-  /* Refit projeção para as dimensões atuais */
-  _projFn.fitExtent([[24, 24], [_mapW - 24, _mapH - 24]], _geoData);
-  _pathFn = d3.geoPath().projection(_projFn);
-
   _gEl.selectAll('path.state-path')
     .data(_geoData.features)
     .join('path')
     .attr('class', 'state-path')
-    .attr('d', _pathFn)
+    .attr('d', d => _featureToD(d))
     .style('fill', d => _stateColor(d.properties.codarea))
     .attr('stroke', '#ffffff')
     .attr('stroke-width', 0.7)
@@ -123,7 +156,7 @@ function _renderGeoJSON() {
     .join('text')
     .attr('class', 'state-lbl')
     .attr('transform', d => {
-      const c = _pathFn.centroid(d);
+      const c = _featureCentroid(d);
       return isNaN(c[0]) ? null : `translate(${c})`;
     })
     .attr('text-anchor', 'middle')
@@ -196,10 +229,15 @@ function zoomToState(cod) {
   if (!_geoData || !_svgEl) return;
   const feat = _geoData.features.find(f => String(f.properties.codarea) === cod);
   if (!feat) return;
-  const [[x0,y0],[x1,y1]] = _pathFn.bounds(feat);
-  const scale = Math.max(0.5, Math.min(12, 0.8 / Math.max((x1-x0)/_mapW, (y1-y0)/_mapH)));
-  const tx = _mapW/2 - scale*(x0+x1)/2;
-  const ty = _mapH/2 - scale*(y0+y1)/2;
+  const d = _featureToD(feat);
+  if (!d) return;
+  const tmp = _svgEl.append('path').attr('d', d).attr('visibility', 'hidden');
+  const bb = tmp.node().getBBox();
+  tmp.remove();
+  if (!bb.width || !bb.height) return;
+  const scale = Math.max(0.5, Math.min(12, 0.8 / Math.max(bb.width/_mapW, bb.height/_mapH)));
+  const tx = _mapW/2 - scale*(bb.x + bb.width/2);
+  const ty = _mapH/2 - scale*(bb.y + bb.height/2);
   _svgEl.transition().duration(650)
     .call(_zoomBeh.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
 }
