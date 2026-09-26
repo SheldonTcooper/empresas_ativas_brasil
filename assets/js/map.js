@@ -82,7 +82,7 @@ function _renderGeoJSON() {
     .join('path')
     .attr('class', 'state-path')
     .attr('d', _pathFn)
-    .attr('fill',   d => _stateColor(d.properties.codarea))
+    .style('fill',   d => _stateColor(d.properties.codarea))
     .attr('stroke', '#334155')
     .attr('stroke-width', 0.8)
     .on('click', (ev, d) => {
@@ -158,7 +158,7 @@ function _renderFallback() {
 function refreshMapColors() {
   if (_geoData) {
     _gEl.selectAll('path.state-path')
-      .attr('fill',         d => _stateColor(d.properties.codarea))
+      .style('fill',        d => _stateColor(d.properties.codarea))
       .attr('stroke-width', d => (typeof S !== 'undefined' && S.ibge === String(d.properties.codarea)) ? 2.5 : 1.2);
   } else {
     _gEl.selectAll('circle.state-path')
