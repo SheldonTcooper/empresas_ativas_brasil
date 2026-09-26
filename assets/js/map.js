@@ -8,7 +8,6 @@ const _colorScale = d3.scaleThreshold()
   .domain([200000, 500000, 1000000, 3000000])
   .range(['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']);
 
-/* Approximate state centroids [lon, lat] */
 const _CENTS = {
   '11':[-63.0,-10.8],'12':[-70.5,-9.0], '13':[-64.6,-4.5], '14':[-61.4,1.7],
   '15':[-52.5,-4.5], '16':[-51.8,1.5],  '17':[-48.3,-10.2],'21':[-44.5,-5.4],
@@ -19,7 +18,7 @@ const _CENTS = {
   '50':[-54.8,-20.5],'51':[-55.9,-13.0],'52':[-49.5,-16.0],'53':[-47.9,-15.8],
 };
 
-/* Bounding box polygon of Brazil for reliable fitExtent */
+/* Brazil bounding box — used as fitExtent target for the fallback circles */
 const _BRAZIL_BOX = {
   type: 'Feature',
   geometry: {
@@ -34,22 +33,28 @@ function _stateColor(cod) {
   return e ? _colorScale(e.e) : '#1a2744';
 }
 
+/* Returns ACTUAL rendered pixel dimensions of #map-wrap */
 function _dims() {
   const wrap = document.getElementById('map-wrap');
-  const hdr  = document.getElementById('hdr');
-  const hdrH = hdr ? hdr.offsetHeight : 52;
-  const W = wrap.clientWidth  || wrap.offsetWidth  || window.innerWidth;
-  const H = wrap.clientHeight || wrap.offsetHeight || (window.innerHeight - hdrH);
+  const rect = wrap.getBoundingClientRect();
+  const W = rect.width  || wrap.clientWidth  || window.innerWidth;
+  const hdr = document.getElementById('hdr');
+  const H = rect.height || wrap.clientHeight || (window.innerHeight - (hdr ? hdr.offsetHeight : 52));
   return { W: Math.max(W, 300), H: Math.max(H, 200) };
 }
 
 function initMap() {
   if (typeof d3 === 'undefined') { console.error('[map] D3 não carregado'); return; }
 
+  const wrap = document.getElementById('map-wrap');
   const { W, H } = _dims();
 
-  _svgEl = d3.select('#map-wrap').append('svg')
-    .attr('width', '100%').attr('height', '100%')
+  /* Remove any previous SVG */
+  d3.select(wrap).selectAll('svg').remove();
+
+  _svgEl = d3.select(wrap).append('svg')
+    .style('width',   '100%')
+    .style('height',  '100%')
     .style('display', 'block');
 
   _gEl = _svgEl.append('g').attr('class', 'geo-group');
@@ -64,35 +69,31 @@ function initMap() {
   _projFn.fitExtent([[20, 20], [W - 20, H - 20]], _BRAZIL_BOX);
   _pathFn = d3.geoPath().projection(_projFn);
 
+  /* Draw fallback circles immediately */
   _renderFallback();
 
-  const CODES = ['11','12','13','14','15','16','17','21','22','23','24',
-                 '25','26','27','28','29','31','32','33','35','41','42',
-                 '43','50','51','52','53'];
-  const IBGE_BASE   = 'https://servicodados.ibge.gov.br/api/v3/malhas/estados/';
-  const IBGE_PARAMS = '?formato=application/vnd.geo%2Bjson&resolucao=2';
+  /* Fetch ALL state polygons in one request */
+  const IBGE = 'https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR' +
+               '?intrarregiao=UF&resolucao=2&formato=application/vnd.geo%2Bjson';
 
-  Promise.all(CODES.map(code =>
-    fetch(IBGE_BASE + code + IBGE_PARAMS)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(gj => {
-        const feat = gj.features ? gj.features[0] : gj;
-        return { type: 'Feature', geometry: feat.geometry, properties: { codarea: code } };
-      })
-      .catch(() => null)
-  )).then(features => {
-    const valid = features.filter(Boolean);
-    if (!valid.length) return;
-    _geoData = { type: 'FeatureCollection', features: valid };
-    _gEl.selectAll('*').remove();
-    _renderGeoJSON();
-  }).catch(() => {});
+  fetch(IBGE)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(gj => {
+      const feats = gj.features || [];
+      if (!feats.length) return;
+      _geoData = { type: 'FeatureCollection', features: feats };
+      _gEl.selectAll('*').remove();
+      _renderGeoJSON();
+    })
+    .catch(() => {
+      /* silently keep fallback circles */
+    });
 }
 
 function _renderGeoJSON() {
-  const { W, H } = _dims();
-  const tip  = document.getElementById('map-tip');
   const wrap = document.getElementById('map-wrap');
+  const tip  = document.getElementById('map-tip');
+  const { W, H } = _dims();
 
   _projFn.fitExtent([[20, 20], [W - 20, H - 20]], _geoData);
   _pathFn = d3.geoPath().projection(_projFn);
@@ -102,12 +103,14 @@ function _renderGeoJSON() {
     .join('path')
     .attr('class', 'state-path')
     .attr('d', _pathFn)
-    .style('fill', d => _stateColor(d.properties.codarea))
-    .attr('stroke', '#334155')
-    .attr('stroke-width', 0.8)
+    .style('fill',         d => _stateColor(d.properties.codarea))
+    .attr('stroke',        '#e2e8f0')
+    .attr('stroke-width',  0.6)
+    .attr('stroke-linejoin', 'round')
     .on('click', (ev, d) => {
       ev.stopPropagation();
-      if (typeof selEstado === 'function') selEstado(String(d.properties.codarea));
+      const cod = String(d.properties.codarea);
+      if (typeof selEstado === 'function') selEstado(cod);
     })
     .on('mousemove', (ev, d) => {
       const e = EST[String(d.properties.codarea)];
@@ -122,6 +125,7 @@ function _renderGeoJSON() {
     })
     .on('mouseleave', () => { tip.style.display = 'none'; });
 
+  /* State abbreviation labels */
   _gEl.selectAll('text.state-lbl')
     .data(_geoData.features)
     .join('text')
@@ -129,34 +133,35 @@ function _renderGeoJSON() {
     .attr('transform', d => `translate(${_pathFn.centroid(d)})`)
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
-    .attr('fill', 'rgba(255,255,255,0.72)')
+    .attr('fill', 'rgba(255,255,255,0.88)')
     .attr('font-size', '8px')
     .attr('font-weight', '700')
     .attr('pointer-events', 'none')
+    .attr('paint-order', 'stroke')
+    .attr('stroke', '#07101f')
+    .attr('stroke-width', '3px')
     .text(d => EST[String(d.properties.codarea)]?.uf || '');
 }
 
 function _renderFallback() {
-  const { W, H } = _dims();
   const wrap = document.getElementById('map-wrap');
   const tip  = document.getElementById('map-tip');
 
   /* _projFn already fitted to _BRAZIL_BOX in initMap */
-
   Object.entries(_CENTS).forEach(([cod, lonlat]) => {
     const e = EST[cod]; if (!e) return;
     const pt = _projFn(lonlat);
     if (!pt || isNaN(pt[0]) || isNaN(pt[1])) return;
     const [cx, cy] = pt;
-    const r = Math.min(Math.max(e.e / 80000, 9), 48);
+    const r = Math.min(Math.max(e.e / 80000, 8), 44);
 
     _gEl.append('circle')
       .attr('cx', cx).attr('cy', cy).attr('r', r)
       .style('fill', _stateColor(cod))
-      .attr('stroke', '#334155').attr('stroke-width', 0.8)
+      .attr('stroke', '#94a3b8').attr('stroke-width', 1)
       .attr('class', 'state-path').style('cursor', 'pointer')
       .attr('data-cod', cod)
-      .on('click', (ev) => {
+      .on('click', ev => {
         ev.stopPropagation();
         if (typeof selEstado === 'function') selEstado(cod);
       })
@@ -172,9 +177,12 @@ function _renderFallback() {
       .on('mouseleave', () => { tip.style.display = 'none'; });
 
     _gEl.append('text')
-      .attr('x', cx).attr('y', cy).attr('text-anchor', 'middle').attr('dy', '0.35em')
-      .attr('fill', 'rgba(255,255,255,0.85)').attr('font-size', '8px').attr('font-weight', '700')
-      .attr('pointer-events', 'none').text(e.uf);
+      .attr('x', cx).attr('y', cy)
+      .attr('text-anchor', 'middle').attr('dy', '0.35em')
+      .attr('fill', '#fff').attr('font-size', '7px').attr('font-weight', '700')
+      .attr('pointer-events', 'none')
+      .attr('paint-order', 'stroke').attr('stroke', '#07101f').attr('stroke-width', '2px')
+      .text(e.uf);
   });
 }
 
@@ -182,7 +190,8 @@ function refreshMapColors() {
   if (_geoData) {
     _gEl.selectAll('path.state-path')
       .style('fill',        d => _stateColor(d.properties.codarea))
-      .attr('stroke-width', d => (typeof S !== 'undefined' && S.ibge === String(d.properties.codarea)) ? 2.5 : 1.2);
+      .attr('stroke-width', d =>
+        (typeof S !== 'undefined' && S.ibge === String(d.properties.codarea)) ? 2 : 0.6);
   } else {
     _gEl.selectAll('circle.state-path')
       .style('fill', function() { return _stateColor(d3.select(this).attr('data-cod')); });
@@ -190,13 +199,13 @@ function refreshMapColors() {
 }
 
 function zoomToState(cod) {
-  if (!_geoData) return;
+  if (!_geoData || !_svgEl) return;
   const feat = _geoData.features.find(f => String(f.properties.codarea) === cod);
   if (!feat) return;
   const { W, H } = _dims();
   const [[x0, y0], [x1, y1]] = _pathFn.bounds(feat);
   const dx = x1 - x0, dy = y1 - y0;
-  const scale = Math.max(0.5, Math.min(12, 0.85 / Math.max(dx / W, dy / H)));
+  const scale = Math.max(0.5, Math.min(12, 0.8 / Math.max(dx / W, dy / H)));
   const tx = W / 2 - scale * (x0 + x1) / 2;
   const ty = H / 2 - scale * (y0 + y1) / 2;
   _svgEl.transition().duration(650)
@@ -208,3 +217,13 @@ function resetMapZoom() {
 }
 function zoomIn()  { if (_svgEl) _svgEl.transition().duration(300).call(_zoomBeh.scaleBy, 1.5); }
 function zoomOut() { if (_svgEl) _svgEl.transition().duration(300).call(_zoomBeh.scaleBy, 0.67); }
+
+/* Re-render on window resize */
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    _geoData = null;
+    initMap();
+  }, 250);
+});
