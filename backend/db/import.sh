@@ -15,6 +15,7 @@ set -e
 DB_URL="${DATABASE_URL:-postgresql://empresas:SENHA@localhost:5432/cnpj_rf}"
 RF_BASE="https://dadosabertos.rfb.gov.br/CNPJ"
 WORK_DIR="${WORK_DIR:-/tmp/cnpj_import}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
@@ -34,7 +35,7 @@ import_csv() {
 
 # ── Schema ──────────────────────────────────────────────────────────────────
 echo "📐 Criando schema..."
-psql "$DB_URL" -f "$(dirname "$0")/schema.sql"
+psql "$DB_URL" -f "$SCRIPT_DIR/schema.sql"
 
 # ── Tabelas de referência (pequenas, rápido) ────────────────────────────────
 echo ""
