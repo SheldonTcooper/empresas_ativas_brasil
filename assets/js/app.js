@@ -375,5 +375,6 @@ function _esc(s) {
 window.addEventListener('DOMContentLoaded', () => {
   crumbs();
   setNav('Estados do Brasil', 'Clique no mapa ou escolha na lista', 'Buscar estado...');
+  renderEstados(Object.entries(EST));
   initMap();
 });
