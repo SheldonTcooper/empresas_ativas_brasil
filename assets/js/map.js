@@ -55,10 +55,12 @@ function initMap() {
     'https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR' +
     '?formato=application/vnd.geo%2Bjson&divisao=UF&resolucao=2';
 
+  const fallbackTimer = setTimeout(() => { if (!_geoData) _renderFallback(); }, 6000);
+
   fetch(IBGE_URL)
     .then(r => { if (!r.ok) throw new Error('API error'); return r.json(); })
-    .then(gj => { _geoData = gj; _renderGeoJSON(); })
-    .catch(() => _renderFallback());
+    .then(gj => { clearTimeout(fallbackTimer); _geoData = gj; _renderGeoJSON(); })
+    .catch(() => { clearTimeout(fallbackTimer); _renderFallback(); });
 }
 
 function _renderGeoJSON() {
