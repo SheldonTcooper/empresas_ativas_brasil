@@ -8,7 +8,7 @@ module.exports = {
     watch:        false,
     env: {
       NODE_ENV:  'production',
-      PORT:      3001,
+      PORT:      3002,
     },
     error_file:   '/var/log/pm2/empresas-api-error.log',
     out_file:     '/var/log/pm2/empresas-api-out.log',
