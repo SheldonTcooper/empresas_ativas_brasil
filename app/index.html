@@ -7,15 +7,14 @@
   <link rel="stylesheet" href="../assets/css/main.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 
-  <!-- Configure aqui para apontar para seu backend na VPS -->
   <script>
-    window.API_BASE    = 'http://2.24.194.5:8081'; // backend API
-    window.N8N_WEBHOOK = '';        // ex: 'https://suavps.com.br/webhook/empresas'
+    window.API_BASE    = 'http://2.24.194.5:8081';
+    window.N8N_WEBHOOK = '';
   </script>
 
   <style>
     [hidden] { display: none !important; }
-    html, body { height: 100%; overflow: hidden; }
+    html, body { height: 100%; overflow: hidden; margin: 0; }
     body { display: flex; flex-direction: column; }
 
     /* ── HEADER ── */
@@ -33,29 +32,30 @@
     .crumb { cursor:pointer; color:var(--acc); white-space:nowrap;
       overflow:hidden; text-overflow:ellipsis; transition:color .15s; }
     .crumb:hover { color:var(--teal); }
-    .crumb.cur  { color:var(--t1); cursor:default; }
+    .crumb.cur { color:var(--t1); cursor:default; }
     .csep { color:var(--brd2); flex-shrink:0; }
     #hdr-stat { font-size:11px; color:var(--t2); background:var(--card);
       border:1px solid var(--brd); padding:4px 12px; border-radius:20px;
       white-space:nowrap; flex-shrink:0; }
 
-    /* ── LAYOUT ── */
-    #main { flex:1; display:flex; overflow:hidden; }
-
-    /* MAP */
-    #map-wrap { flex:1; min-width:0; position:relative; background:#07101f; overflow:hidden; }
+    /* ── HOME VIEW: MAP FULL SCREEN ── */
+    #home-view { flex:1; display:flex; overflow:hidden; }
+    #map-wrap { flex:1; position:relative; background:#07101f; overflow:hidden; }
     #map-wrap svg { width:100%; height:100%; display:block; }
     .state-path { cursor:pointer; transition:fill .18s; }
+
     #map-tip { position:absolute; pointer-events:none;
       background:#1a2744; border:1px solid #1e3a8a; border-radius:7px;
       padding:8px 13px; font-size:12px; color:#eef2ff;
       box-shadow:0 4px 16px rgba(0,0,0,.7); z-index:10; display:none; white-space:nowrap; }
+
     #map-legend { position:absolute; bottom:16px; left:16px; z-index:10;
       background:rgba(8,14,30,.88); border:1px solid var(--brd);
       border-radius:8px; padding:10px 14px; font-size:11px; color:var(--t2); }
     #map-legend b { display:block; color:var(--t1); margin-bottom:6px; font-size:11px; }
     .leg-row { display:flex; align-items:center; gap:6px; margin-top:4px; }
     .leg-sw  { width:18px; height:10px; border-radius:2px; flex-shrink:0; }
+
     #map-controls { position:absolute; top:12px; right:12px; z-index:10;
       display:flex; flex-direction:column; gap:4px; }
     .map-btn { width:32px; height:32px; background:var(--card); border:1px solid var(--brd);
@@ -63,35 +63,59 @@
       display:flex; align-items:center; justify-content:center; transition:all .15s; }
     .map-btn:hover { background:var(--card2); color:var(--t1); }
 
-    /* NAV PANEL */
-    #nav { width:360px; flex-shrink:0; background:var(--bg);
-      border-left:1px solid var(--brd); display:flex; flex-direction:column; overflow:hidden; }
-    #nav-head { padding:14px 16px 10px; border-bottom:1px solid var(--brd);
-      background:var(--surf); flex-shrink:0; }
-    #nav-title { font-family:'Sora',sans-serif; font-size:15px; font-weight:700;
-      color:var(--t1); margin-bottom:3px; }
-    #nav-sub  { font-size:11px; color:var(--t2); }
-    #nav-srch { padding:8px 12px; border-bottom:1px solid var(--brd); flex-shrink:0; }
-    #nav-srch input { width:100%; padding:7px 12px; background:var(--card);
-      border:1px solid var(--brd); border-radius:6px;
-      color:var(--t1); font-size:13px; outline:none; }
-    #nav-srch input:focus { border-color:var(--acc); }
-    #nav-srch input::placeholder { color:var(--t3); }
-    #nav-list { flex:1; overflow-y:auto; padding:8px; }
+    #map-hint { position:absolute; bottom:0; left:0; right:0; z-index:5; pointer-events:none;
+      background:linear-gradient(transparent, rgba(7,16,31,.85));
+      padding:32px 20px 18px; text-align:center; }
+    #map-hint span { font-size:12px; color:rgba(148,163,184,.65); letter-spacing:.4px; }
 
-    .item { padding:10px 13px; margin-bottom:3px; border-radius:7px;
-      cursor:pointer; border:1px solid transparent; background:var(--surf);
+    /* ── LIST VIEW: MUNICÍPIOS / CNAEs ── */
+    #list-view { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+
+    #lv-topbar { flex-shrink:0; display:flex; align-items:center; gap:12px;
+      padding:12px 20px; background:var(--surf); border-bottom:1px solid var(--brd); }
+    #lv-back { display:inline-flex; align-items:center; gap:6px; padding:7px 14px;
+      background:var(--card); border:1px solid var(--brd); border-radius:7px;
+      cursor:pointer; font-size:12px; font-weight:600; color:var(--t2);
+      transition:all .15s; white-space:nowrap; flex-shrink:0; }
+    #lv-back:hover { background:var(--card2); color:var(--t1); border-color:var(--acc); }
+    #lv-info { flex:1; min-width:0; }
+    #lv-title { font-family:'Sora',sans-serif; font-size:17px; font-weight:800;
+      color:var(--t1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #lv-sub { font-size:11px; color:var(--t2); margin-top:2px; }
+
+    #lv-searchbar { flex-shrink:0; padding:10px 20px; background:var(--bg);
+      border-bottom:1px solid var(--brd); }
+    #lv-srch { width:100%; padding:9px 14px; background:var(--card);
+      border:1px solid var(--brd); border-radius:8px;
+      color:var(--t1); font-size:13px; outline:none; box-sizing:border-box; }
+    #lv-srch:focus { border-color:var(--acc); box-shadow:0 0 0 2px rgba(59,130,246,.15); }
+    #lv-srch::placeholder { color:var(--t3); }
+
+    #lv-items { flex:1; overflow-y:auto; padding:16px 20px; }
+    .lv-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; }
+
+    .lv-item { padding:12px 16px; border-radius:9px; cursor:pointer;
+      border:1px solid var(--brd); background:var(--surf);
       transition:all .15s; display:flex; align-items:center;
-      justify-content:space-between; gap:8px; }
-    .item:hover { background:var(--card); border-color:var(--acc); transform:translateX(3px); }
-    .i-title { font-size:13px; font-weight:600; color:var(--t1);
+      justify-content:space-between; gap:10px; }
+    .lv-item:hover { background:var(--card); border-color:var(--acc);
+      transform:translateY(-1px); box-shadow:0 4px 12px rgba(59,130,246,.1); }
+    .lv-item-main { min-width:0; flex:1; }
+    .lv-item-title { font-size:13px; font-weight:600; color:var(--t1);
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .i-sub { font-size:11px; color:var(--t2); margin-top:2px;
+    .lv-item-sub { font-size:11px; color:var(--t2); margin-top:3px;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .i-badge { font-size:12px; font-weight:700; color:var(--teal);
-      white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .lv-item-arrow { color:var(--acc); font-size:18px; flex-shrink:0; opacity:.5; }
 
-    /* TABLE VIEW */
+    /* ── LOADING / EMPTY ── */
+    .ld { display:flex; flex-direction:column; align-items:center;
+      justify-content:center; padding:60px 20px; gap:12px; color:var(--t2); font-size:13px; }
+    .sp { width:32px; height:32px; border:3px solid var(--card2);
+      border-top-color:var(--acc); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .emp { text-align:center; padding:60px 20px; color:var(--t2); font-size:13px; }
+
+    /* ── TABLE VIEW ── */
     #tbl-view { flex:1; display:flex; flex-direction:column; overflow:hidden; }
     #tbl-bar { flex-shrink:0; display:flex; align-items:center; gap:8px;
       padding:10px 20px; background:var(--surf);
@@ -135,9 +159,9 @@
     .lk-tk { background:rgba(0,0,0,.15);     color:#fff;    border:1px solid rgba(255,255,255,.15); }
     .lk-fb { background:rgba(24,119,242,.1); color:#1877f2; border:1px solid rgba(24,119,242,.3); }
     .lk-wb { background:rgba(139,92,246,.1); color:#8b5cf6; border:1px solid rgba(139,92,246,.3); }
-    .lk-ai { background:rgba(99,102,241,.15);color:#818cf8; border:1px solid rgba(99,102,241,.4); border:none; }
+    .lk-ai { background:rgba(99,102,241,.15);color:#818cf8; border:1px solid rgba(99,102,241,.4); }
 
-    /* CSV MODAL */
+    /* ── CSV MODAL ── */
     #csv-modal { position:fixed; inset:0; background:rgba(0,0,0,.75);
       align-items:center; justify-content:center; z-index:2000; padding:20px; }
     #csv-modal:not([hidden]) { display:flex; }
@@ -171,7 +195,7 @@
     .diag-score-wrap { display:flex; gap:20px; align-items:center; margin-bottom:18px; }
     .diag-score-ring { width:76px; height:76px; flex-shrink:0; position:relative;
       border-radius:50%;
-      background: conic-gradient(var(--cor, var(--acc)) calc(var(--score, 50) * 3.6deg), var(--card) 0);
+      background: conic-gradient(var(--cor,var(--acc)) calc(var(--score,50)*3.6deg),var(--card) 0);
       display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .diag-score-ring::before { content:''; position:absolute; inset:8px;
       border-radius:50%; background:var(--surf); }
@@ -191,19 +215,9 @@
     .diag-tag  { font-size:10px; padding:3px 9px; border-radius:20px;
       background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.3); color:var(--acc); }
 
-    /* LOADING / EMPTY */
-    .ld  { display:flex; flex-direction:column; align-items:center;
-      justify-content:center; padding:40px; gap:10px; color:var(--t2); font-size:13px; }
-    .sp  { width:32px; height:32px; border:3px solid var(--card2);
-      border-top-color:var(--acc); border-radius:50%; animation:spin .7s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .emp { text-align:center; padding:40px; color:var(--t2); font-size:13px; }
-
     @media (max-width:680px) {
-      #main      { flex-direction:column; }
-      #map-wrap  { height:240px; flex:none; }
-      #nav       { width:100%; border-left:none; border-top:1px solid var(--brd); }
-      #tbl-bar   { gap:6px; }
+      .lv-grid { grid-template-columns:1fr; }
+      #tbl-bar { gap:6px; }
     }
   </style>
 </head>
@@ -216,40 +230,47 @@
   <span id="hdr-stat">23.148.920 empresas ativas</span>
 </header>
 
-<!-- MAIN: MAP + NAV -->
-<div id="main">
+<!-- VIEW 1: MAPA COMPLETO (home) -->
+<div id="home-view" style="flex:1;display:flex;overflow:hidden;">
   <div id="map-wrap">
     <div id="map-tip"></div>
     <div id="map-controls">
-      <button class="map-btn" onclick="zoomIn()"        title="Zoom +">+</button>
-      <button class="map-btn" onclick="zoomOut()"       title="Zoom −">−</button>
-      <button class="map-btn" onclick="resetMapZoom()"  title="Resetar" style="font-size:13px">⌂</button>
+      <button class="map-btn" onclick="zoomIn()"       title="Zoom +">+</button>
+      <button class="map-btn" onclick="zoomOut()"      title="Zoom −">−</button>
+      <button class="map-btn" onclick="resetMapZoom()" title="Resetar" style="font-size:13px">⌂</button>
     </div>
     <div id="map-legend">
       <b>Empresas ativas</b>
-      <div class="leg-row"><div class="leg-sw" style="background:#1d3461"></div> &lt; 200k</div>
-      <div class="leg-row"><div class="leg-sw" style="background:#1e4d8c"></div> 200k – 1M</div>
-      <div class="leg-row"><div class="leg-sw" style="background:#2563eb"></div> 1M – 3M</div>
-      <div class="leg-row"><div class="leg-sw" style="background:#60a5fa"></div> 3M+</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#1d3461"></div>&lt; 200k</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#1e4d8c"></div>200k – 1M</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#2563eb"></div>1M – 3M</div>
+      <div class="leg-row"><div class="leg-sw" style="background:#60a5fa"></div>3M+</div>
     </div>
-  </div>
-
-  <div id="nav">
-    <div id="nav-head">
-      <div id="nav-title">Estados do Brasil</div>
-      <div id="nav-sub">Clique no mapa ou escolha na lista</div>
-    </div>
-    <div id="nav-srch">
-      <input type="text" id="srch" placeholder="Buscar estado..." autocomplete="off" oninput="onSearch(this.value)">
-    </div>
-    <div id="nav-list">
-      <div class="ld"><div class="sp"></div>Carregando mapa...</div>
+    <div id="map-hint">
+      <span>Clique em um estado no mapa para explorar empresas ativas</span>
     </div>
   </div>
 </div>
 
-<!-- TABLE VIEW -->
-<div id="tbl-view" hidden>
+<!-- VIEW 2: LISTA (municípios ou CNAEs) -->
+<div id="list-view" hidden style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+  <div id="lv-topbar">
+    <div id="lv-back" onclick="lvBack()">← Voltar</div>
+    <div id="lv-info">
+      <div id="lv-title">Municípios</div>
+      <div id="lv-sub">Selecione um município</div>
+    </div>
+  </div>
+  <div id="lv-searchbar">
+    <input type="text" id="lv-srch" placeholder="Buscar..." autocomplete="off" oninput="onSearch(this.value)">
+  </div>
+  <div id="lv-items">
+    <div class="ld"><div class="sp"></div>Carregando...</div>
+  </div>
+</div>
+
+<!-- VIEW 3: TABELA DE EMPRESAS -->
+<div id="tbl-view" hidden style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
   <div id="tbl-bar">
     <input type="text" id="tbl-srch" placeholder="🔍 Filtrar empresas..." oninput="onTblSearch(this.value)">
     <button class="btn btn-ghost btn-sm" onclick="backToMun()">← Mudar CNAE</button>
@@ -267,17 +288,9 @@
     <table>
       <thead>
         <tr>
-          <th>CNPJ</th>
-          <th>Razão Social</th>
-          <th>Fantasia</th>
-          <th>Tipo</th>
-          <th>Abertura</th>
-          <th>Porte</th>
-          <th>Telefone</th>
-          <th>E-mail</th>
-          <th>Endereço · Bairro</th>
-          <th>CEP</th>
-          <th>Links & IA</th>
+          <th>CNPJ</th><th>Razão Social</th><th>Fantasia</th><th>Tipo</th>
+          <th>Abertura</th><th>Porte</th><th>Telefone</th><th>E-mail</th>
+          <th>Endereço · Bairro</th><th>CEP</th><th>Links & IA</th>
         </tr>
       </thead>
       <tbody id="tbl-body"></tbody>
@@ -316,10 +329,10 @@
   </div>
 </div>
 
-<script src="../assets/js/data.js?v=5"></script>
-<script src="../assets/js/generator.js?v=5"></script>
-<script src="../assets/js/api.js?v=5"></script>
-<script src="../assets/js/map.js?v=5"></script>
-<script src="../assets/js/app.js?v=5"></script>
+<script src="../assets/js/data.js?v=6"></script>
+<script src="../assets/js/generator.js?v=6"></script>
+<script src="../assets/js/api.js?v=6"></script>
+<script src="../assets/js/map.js?v=6"></script>
+<script src="../assets/js/app.js?v=6"></script>
 </body>
 </html>

@@ -1,15 +1,24 @@
 /* ═══════════════════════════════════════════════
-   app.js — Application logic: navigation, table, CSV, AI, n8n
+   app.js — Navigation, table, CSV, AI, n8n
    ═══════════════════════════════════════════════ */
 
-/* ── App State ── */
 const S = {
   ibge: null, uf: null, ufNome: null,
   munId: null, munNome: null,
   cnae: null, cnaeNome: null,
   munList: [], companies: [], filtered: [],
   totalApi: 0, page: 1, source: 'demo',
+  listMode: 'mun',
+  _lvBackFn: null,
 };
+
+/* ════════ VIEW MANAGEMENT ════════ */
+
+function showView(name) {
+  document.getElementById('home-view').hidden = name !== 'home';
+  document.getElementById('list-view').hidden = name !== 'list';
+  document.getElementById('tbl-view').hidden  = name !== 'tbl';
+}
 
 /* ════════ NAVIGATION ════════ */
 
@@ -17,18 +26,23 @@ function selEstado(cod) {
   const e = EST[String(cod)]; if (!e) return;
   S.ibge = cod; S.uf = e.uf; S.ufNome = e.n;
   S.munId = null; S.munNome = null; S.cnae = null; S.cnaeNome = null;
+  S.listMode = 'mun';
   refreshMapColors();
-  zoomToState(cod);
   crumbs();
-  setNav(e.n, `${e.uf} · Selecione um município`, 'Buscar município...');
+  setLvBack('← Mapa do Brasil', goHome);
+  setListHead(e.n, `${e.uf} · ${e.r} — selecione um município`, 'Buscar município...');
+  showView('list');
   loadMuns();
 }
 
 function loadMuns() {
-  nl('<div class="ld"><div class="sp"></div>Carregando municípios...</div>');
+  lvItems('<div class="ld"><div class="sp"></div>Carregando municípios...</div>');
   fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${S.ibge}/municipios?orderBy=nome`)
     .then(r => r.ok ? r.json() : Promise.reject())
-    .then(data => { S.munList = data.map(m => ({ id: m.id, nome: m.nome })); renderMuns(S.munList); })
+    .then(data => {
+      S.munList = data.map(m => ({ id: m.id, nome: m.nome }));
+      renderMuns(S.munList);
+    })
     .catch(() => {
       S.munList = (FM[S.uf] || []).map((nome, i) => ({ id: i + 1, nome }));
       renderMuns(S.munList);
@@ -36,33 +50,38 @@ function loadMuns() {
 }
 
 function renderMuns(list) {
-  if (!list.length) { nl('<div class="emp">Nenhum município encontrado</div>'); return; }
-  nl(list.map(m =>
-    `<div class="item" onclick="selMun(${m.id}, '${_esc(m.nome)}')">
-      <div>
-        <div class="i-title">${m.nome}</div>
-        <div class="i-sub">Cód. IBGE ${m.id}</div>
+  if (!list.length) { lvItems('<div class="emp">Nenhum município encontrado</div>'); return; }
+  lvGrid(list.map(m =>
+    `<div class="lv-item" onclick="selMun(${m.id},'${_esc(m.nome)}')">
+      <div class="lv-item-main">
+        <div class="lv-item-title">${m.nome}</div>
+        <div class="lv-item-sub">Cód. IBGE ${m.id}</div>
       </div>
+      <span class="lv-item-arrow">›</span>
     </div>`
   ).join(''));
 }
 
 function selMun(id, nome) {
   S.munId = id; S.munNome = nome; S.cnae = null; S.cnaeNome = null;
+  S.listMode = 'cnae';
   crumbs();
-  setNav(nome, `${S.ufNome} · Selecione uma atividade (CNAE)`, 'Buscar atividade ou CNAE...');
+  setLvBack(`← ${S.ufNome}`, () => selEstado(S.ibge));
+  setListHead(nome, `${S.ufNome} — selecione uma atividade (CNAE)`, 'Buscar atividade ou código CNAE...');
   renderCnaes(CNAES);
 }
 
 function renderCnaes(list) {
-  nl(list.map(([c, d]) =>
-    `<div class="item" onclick="selCnae('${c}', '${_esc(d)}')">
-      <div>
-        <div class="i-title">${d}</div>
-        <div class="i-sub">CNAE ${c}</div>
+  if (!list.length) { lvItems('<div class="emp">Nenhuma atividade encontrada</div>'); return; }
+  lvGrid(list.map(([c, d]) =>
+    `<div class="lv-item" onclick="selCnae('${c}','${_esc(d)}')">
+      <div class="lv-item-main">
+        <div class="lv-item-title">${d}</div>
+        <div class="lv-item-sub">CNAE ${c}</div>
       </div>
+      <span class="lv-item-arrow">›</span>
     </div>`
-  ).join('') || '<div class="emp">Nenhuma atividade encontrada</div>');
+  ).join(''));
 }
 
 function selCnae(cod, desc) {
@@ -74,27 +93,35 @@ function selCnae(cod, desc) {
 function goHome() {
   S.ibge = null; S.uf = null; S.ufNome = null;
   S.munId = null; S.munNome = null; S.cnae = null; S.cnaeNome = null;
-  hideTable();
-  resetMapZoom();
+  showView('home');
   refreshMapColors();
+  resetMapZoom();
   crumbs();
-  setNav('Estados do Brasil', 'Clique no mapa ou escolha na lista', 'Buscar estado...');
-  renderEstados(Object.entries(EST));
 }
 
 function backToMun() {
   S.cnae = null; S.cnaeNome = null;
-  hideTable();
+  S.listMode = 'cnae';
   crumbs();
-  setNav(S.munNome, `${S.ufNome} · Selecione uma atividade`, 'Buscar CNAE...');
+  setLvBack(`← ${S.ufNome}`, () => selEstado(S.ibge));
+  setListHead(S.munNome, `${S.ufNome} — selecione uma atividade`, 'Buscar CNAE...');
+  showView('list');
   renderCnaes(CNAES);
+}
+
+function lvBack() {
+  if (S._lvBackFn) S._lvBackFn();
+}
+
+function setLvBack(label, fn) {
+  S._lvBackFn = fn;
+  document.getElementById('lv-back').textContent = label;
 }
 
 /* ════════ TABLE ════════ */
 
 async function showTable(page) {
-  document.getElementById('main').hidden    = true;
-  document.getElementById('tbl-view').hidden = false;
+  showView('tbl');
   S.page = page || 1;
   document.getElementById('tbl-srch').value = '';
   document.getElementById('tbl-body').innerHTML =
@@ -112,16 +139,11 @@ async function showTable(page) {
   _renderPagination();
 }
 
-function hideTable() {
-  document.getElementById('main').hidden    = false;
-  document.getElementById('tbl-view').hidden = true;
-}
-
 function _updateTblHeader() {
   const cnt  = document.getElementById('tbl-cnt');
   const demo = document.getElementById('demo-badge');
-  cnt.textContent  = `${S.filtered.length} de ${S.totalApi.toLocaleString('pt-BR')} empresas`;
-  demo.hidden      = S.source !== 'demo';
+  cnt.textContent = `${S.filtered.length} de ${S.totalApi.toLocaleString('pt-BR')} empresas`;
+  demo.hidden     = S.source !== 'demo';
 }
 
 function renderRows(list) {
@@ -138,16 +160,16 @@ function renderRows(list) {
       <td style="font-size:11px;white-space:nowrap">${e.tel1}${e.tel2 ? '<br>' + e.tel2 : ''}</td>
       <td style="font-size:11px;word-break:break-all;max-width:120px">${e.email || '—'}</td>
       <td style="font-size:11px;max-width:170px">
-        ${e.logr}, ${e.num}${e.compl ? ', ' + e.compl : ''}
+        ${e.logr}, ${e.num}${e.compl ? ', '+e.compl : ''}
         <br><span style="color:var(--t2)">${e.bairro}</span>
       </td>
       <td style="font-family:monospace;font-size:11px">${e.cep}</td>
       <td class="lks">
-        <a href="${e.maps}"      target="_blank" class="lk lk-mp">📍 Maps</a>
-        ${e.wpp      ? `<a href="${e.wpp}"       target="_blank" class="lk lk-wp">💬 Wpp</a>`    : ''}
+        <a href="${e.maps}" target="_blank" class="lk lk-mp">📍 Maps</a>
+        ${e.wpp ? `<a href="${e.wpp}" target="_blank" class="lk lk-wp">💬 Wpp</a>` : ''}
         <a href="${e.linkedin}"  target="_blank" class="lk lk-li">in</a>
         <a href="${e.instagram}" target="_blank" class="lk lk-ig">📷 IG</a>
-        <a href="${e.tiktok || '#'}" target="_blank" class="lk lk-tk" ${!e.tiktok ? 'style="display:none"' : ''}>🎵 TK</a>
+        <a href="${e.tiktok||'#'}" target="_blank" class="lk lk-tk" ${!e.tiktok?'style="display:none"':''}>🎵 TK</a>
         <a href="${e.facebook}"  target="_blank" class="lk lk-fb">f</a>
         ${e.site ? `<a href="${e.site}" target="_blank" class="lk lk-wb">🌐</a>` : ''}
         <button class="lk lk-ai" onclick="openDiag(${idx})" title="Diagnóstico IA">🤖 IA</button>
@@ -163,8 +185,8 @@ function _renderPagination() {
   if (totalPages <= 1) { el.innerHTML = ''; return; }
   const p = S.page;
   let h = `<span style="font-size:11px;color:var(--t2)">Página ${p} de ${totalPages}</span>`;
-  if (p > 1) h += `<button class="btn btn-ghost btn-sm" onclick="showTable(${p - 1})">‹ Anterior</button>`;
-  if (p < totalPages) h += `<button class="btn btn-ghost btn-sm" onclick="showTable(${p + 1})">Próxima ›</button>`;
+  if (p > 1) h += `<button class="btn btn-ghost btn-sm" onclick="showTable(${p-1})">‹ Anterior</button>`;
+  if (p < totalPages) h += `<button class="btn btn-ghost btn-sm" onclick="showTable(${p+1})">Próxima ›</button>`;
   el.innerHTML = h;
 }
 
@@ -172,8 +194,8 @@ function onTblSearch(v) {
   const t = v.toLowerCase();
   S.filtered = t
     ? S.companies.filter(e =>
-        e.razao.toLowerCase().includes(t)  ||
-        e.cnpj.includes(t)                 ||
+        e.razao.toLowerCase().includes(t) ||
+        e.cnpj.includes(t) ||
         (e.fantasia || '').toLowerCase().includes(t) ||
         (e.email    || '').toLowerCase().includes(t) ||
         (e.bairro   || '').toLowerCase().includes(t)
@@ -187,22 +209,23 @@ function onTblSearch(v) {
 /* ════════ DIAGNÓSTICO IA ════════ */
 
 function openDiag(idx) {
-  const e   = S.filtered[idx];
-  const mod = document.getElementById('diag-modal');
-  mod.hidden = false;
-  document.getElementById('diag-nome').textContent   = e.razao + (e.fantasia ? ` (${e.fantasia})` : '');
-  document.getElementById('diag-cnae').textContent   = S.cnaeNome;
-  document.getElementById('diag-porte').textContent  = `${e.porte} · ${e.tipo} · desde ${e.abertura}`;
-  document.getElementById('diag-body').innerHTML     =
+  const e = S.filtered[idx];
+  document.getElementById('diag-modal').hidden = false;
+  document.getElementById('diag-nome').textContent  = e.razao + (e.fantasia ? ` (${e.fantasia})` : '');
+  document.getElementById('diag-cnae').textContent  = S.cnaeNome;
+  document.getElementById('diag-porte').textContent = `${e.porte} · ${e.tipo} · desde ${e.abertura}`;
+  document.getElementById('diag-body').innerHTML    =
     '<div class="ld"><div class="sp"></div>Analisando com IA Groq...</div>';
 
   fetchDiagnostico(e, S.cnaeNome)
-    .then(d  => _renderDiag(d))
+    .then(d => _renderDiag(d))
     .catch(err => {
       document.getElementById('diag-body').innerHTML =
-        `<div style="color:var(--err);padding:20px;text-align:center">
-          ⚠ ${err.message.includes('GROQ_API_KEY') ? 'Configure GROQ_API_KEY no servidor backend.' : err.message}
-         </div>`;
+        `<div style="color:var(--red);padding:20px;text-align:center">
+          ⚠ ${err.message.includes('GROQ_API_KEY')
+            ? 'Configure GROQ_API_KEY no servidor backend.'
+            : err.message}
+        </div>`;
     });
 }
 
@@ -212,10 +235,9 @@ function _renderDiag(d) {
   document.getElementById('diag-body').innerHTML = `
     <div class="diag-score-wrap">
       <div class="diag-score-ring" style="--score:${d.score};--cor:${cor}">
-        <span>${d.score}</span>
-        <small>Score</small>
+        <span>${d.score}</span><small>Score</small>
       </div>
-      <div class="diag-score-info">
+      <div>
         <div class="diag-pot" style="color:${cor}">● Potencial ${d.potencial}</div>
         <div style="font-size:12px;color:var(--t2);margin-top:4px">${d.justificativa}</div>
         <div class="diag-canal">🎯 Canal ideal: <b>${d.canal_ideal}</b></div>
@@ -229,10 +251,7 @@ function _renderDiag(d) {
       <div class="diag-sec-title">Dicas de abordagem</div>
       <ul>${(d.abordagem || []).map(a => `<li>${a}</li>`).join('')}</ul>
     </div>
-    ${d.tags?.length ? `
-    <div class="diag-tags">
-      ${d.tags.map(t => `<span class="diag-tag">${t}</span>`).join('')}
-    </div>` : ''}
+    ${d.tags?.length ? `<div class="diag-tags">${d.tags.map(t=>`<span class="diag-tag">${t}</span>`).join('')}</div>` : ''}
   `;
 }
 
@@ -249,11 +268,11 @@ function exportCSV() {
     'Município','UF','CEP','Google Maps','WhatsApp','LinkedIn','Instagram','TikTok','Facebook','Site'
   ];
   const rows = S.filtered.map(e => [
-    e.cnpj, e.razao, e.fantasia || '', e.tipo, e.abertura, e.porte, S.cnae,
-    e.tel1, e.tel2 || '', e.email || '', e.logr, e.num, e.compl || '', e.bairro,
-    S.munNome, S.uf, e.cep, e.maps, e.wpp || '', e.linkedin, e.instagram,
-    e.tiktok || '', e.facebook, e.site || ''
-  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    e.cnpj, e.razao, e.fantasia||'', e.tipo, e.abertura, e.porte, S.cnae,
+    e.tel1, e.tel2||'', e.email||'', e.logr, e.num, e.compl||'', e.bairro,
+    S.munNome, S.uf, e.cep, e.maps, e.wpp||'', e.linkedin, e.instagram,
+    e.tiktok||'', e.facebook, e.site||''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
 
   const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
 
@@ -282,20 +301,12 @@ function copiarCSV() {
 async function exportN8n() {
   const btn = document.getElementById('n8n-btn');
   if (!btn) return;
-  btn.disabled = true;
-  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true; btn.textContent = '⏳ Enviando...';
   try {
     await sendToN8n({
-      timestamp:       new Date().toISOString(),
-      estado:          S.uf,
-      estado_nome:     S.ufNome,
-      municipio:       S.munNome,
-      municipio_ibge:  S.ibge,
-      cnae:            S.cnae,
-      cnae_desc:       S.cnaeNome,
-      total_filtrado:  S.filtered.length,
-      source:          S.source,
-      empresas:        S.filtered,
+      timestamp: new Date().toISOString(), estado: S.uf, estado_nome: S.ufNome,
+      municipio: S.munNome, municipio_ibge: S.ibge, cnae: S.cnae, cnae_desc: S.cnaeNome,
+      total_filtrado: S.filtered.length, source: S.source, empresas: S.filtered,
     });
     btn.textContent = '✓ Enviado!'; btn.style.background = '#14b8a6';
     setTimeout(() => { btn.textContent = '⚡ Enviar n8n'; btn.style.background = ''; btn.disabled = false; }, 3000);
@@ -310,16 +321,10 @@ async function exportN8n() {
 
 function onSearch(v) {
   const t = v.toLowerCase().trim();
-  if (!S.uf && !S.munId) {
-    renderEstados(Object.entries(EST).filter(([, e]) =>
-      e.n.toLowerCase().includes(t) || e.uf.toLowerCase().includes(t)
-    ));
-  } else if (S.uf && !S.munId) {
+  if (S.listMode === 'mun') {
     renderMuns(S.munList.filter(m => m.nome.toLowerCase().includes(t)));
-  } else if (S.munId) {
-    renderCnaes(CNAES.filter(([c, d]) =>
-      d.toLowerCase().includes(t) || c.includes(t)
-    ));
+  } else {
+    renderCnaes(CNAES.filter(([c, d]) => d.toLowerCase().includes(t) || c.includes(t)));
   }
 }
 
@@ -333,7 +338,7 @@ function crumbs() {
           <span class="crumb${S.munId ? '' : ' cur'}" ${clk}>${S.uf} — ${S.ufNome}</span>`;
   }
   if (S.munNome) {
-    const clk = S.cnae ? `onclick="selMun(${S.munId}, '${_esc(S.munNome)}')"` : '';
+    const clk = S.cnae ? `onclick="selMun(${S.munId},'${_esc(S.munNome)}')"` : '';
     h += `<span class="csep">›</span>
           <span class="crumb${S.cnae ? '' : ' cur'}" ${clk}>${S.munNome}</span>`;
   }
@@ -343,38 +348,27 @@ function crumbs() {
   document.getElementById('crumbs').innerHTML = h;
 }
 
-function setNav(title, sub, ph) {
-  document.getElementById('nav-title').textContent = title;
-  document.getElementById('nav-sub').textContent   = sub;
-  document.getElementById('srch').placeholder      = ph;
-  document.getElementById('srch').value            = '';
+function setListHead(title, sub, ph) {
+  document.getElementById('lv-title').textContent = title;
+  document.getElementById('lv-sub').textContent   = sub;
+  document.getElementById('lv-srch').placeholder  = ph;
+  document.getElementById('lv-srch').value        = '';
 }
 
-function nl(html) { document.getElementById('nav-list').innerHTML = html; }
-
-function renderEstados(entries) {
-  const sorted = [...entries].sort((a, b) => b[1].e - a[1].e);
-  nl(sorted.map(([cod, e]) => `
-    <div class="item" onclick="selEstado('${cod}')">
-      <div class="item-body">
-        <div class="i-title">${e.n}</div>
-        <div class="i-sub">${e.uf} · ${e.r}</div>
-      </div>
-      <div class="i-badge">
-        ${e.e >= 1e6 ? (e.e / 1e6).toFixed(1) + 'M' : (e.e / 1e3).toFixed(0) + 'k'}
-      </div>
-    </div>`
-  ).join(''));
+function lvItems(html) {
+  document.getElementById('lv-items').innerHTML = html;
 }
 
-function _esc(s) {
-  return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+function lvGrid(html) {
+  document.getElementById('lv-items').innerHTML = `<div class="lv-grid">${html}</div>`;
 }
+
+function renderEstados() { /* no-op – states are selected via map only */ }
+
+function _esc(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 /* ════════ INIT ════════ */
 window.addEventListener('DOMContentLoaded', () => {
   crumbs();
-  setNav('Estados do Brasil', 'Clique no mapa ou escolha na lista', 'Buscar estado...');
-  renderEstados(Object.entries(EST));
-  initMap();
+  requestAnimationFrame(initMap);
 });
