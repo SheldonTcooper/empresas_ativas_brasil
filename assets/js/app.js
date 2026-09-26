@@ -370,5 +370,7 @@ function _esc(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 /* ════════ INIT ════════ */
 window.addEventListener('DOMContentLoaded', () => {
   crumbs();
-  requestAnimationFrame(initMap);
+  /* double-rAF: garante que o layout (flex + position:absolute) foi calculado
+     antes de ler clientWidth/clientHeight do #map-wrap */
+  requestAnimationFrame(() => requestAnimationFrame(initMap));
 });

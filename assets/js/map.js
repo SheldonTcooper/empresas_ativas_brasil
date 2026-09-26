@@ -36,10 +36,11 @@ function _stateColor(cod) {
 
 function _dims() {
   const wrap = document.getElementById('map-wrap');
-  return {
-    W: wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.9),
-    H: wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.9),
-  };
+  const hdr  = document.getElementById('hdr');
+  const hdrH = hdr ? hdr.offsetHeight : 52;
+  const W = wrap.clientWidth  || wrap.offsetWidth  || window.innerWidth;
+  const H = wrap.clientHeight || wrap.offsetHeight || (window.innerHeight - hdrH);
+  return { W: Math.max(W, 300), H: Math.max(H, 200) };
 }
 
 function initMap() {
