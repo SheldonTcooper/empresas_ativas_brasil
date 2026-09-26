@@ -58,19 +58,28 @@ function initMap() {
   /* Renderiza círculos imediatamente — sem esperar rede */
   _renderFallback();
 
-  /* Tenta IBGE em background para upgrade para polígonos */
-  const IBGE_URL =
-    'https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR' +
-    '?formato=application/vnd.geo%2Bjson&divisao=UF&resolucao=2';
+  /* Busca cada estado individualmente para garantir features separadas */
+  const CODES = ['11','12','13','14','15','16','17','21','22','23','24',
+                 '25','26','27','28','29','31','32','33','35','41','42',
+                 '43','50','51','52','53'];
+  const IBGE_BASE = 'https://servicodados.ibge.gov.br/api/v3/malhas/estados/';
+  const IBGE_PARAMS = '?formato=application/vnd.geo%2Bjson&resolucao=2';
 
-  fetch(IBGE_URL)
-    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(gj => {
-      _geoData = gj;
-      _gEl.selectAll('*').remove(); /* remove circles */
-      _renderGeoJSON();
-    })
-    .catch(() => { /* circles already showing — nothing to do */ });
+  Promise.all(CODES.map(code =>
+    fetch(IBGE_BASE + code + IBGE_PARAMS)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(gj => {
+        const feat = gj.features ? gj.features[0] : gj;
+        return { type: 'Feature', geometry: feat.geometry, properties: { codarea: code } };
+      })
+      .catch(() => null)
+  )).then(features => {
+    const valid = features.filter(Boolean);
+    if (!valid.length) return;
+    _geoData = { type: 'FeatureCollection', features: valid };
+    _gEl.selectAll('*').remove();
+    _renderGeoJSON();
+  }).catch(() => {});
 }
 
 function _renderGeoJSON() {
