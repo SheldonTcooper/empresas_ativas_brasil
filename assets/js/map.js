@@ -8,7 +8,7 @@ let _svgEl, _projFn, _pathFn, _geoData, _zoomBeh, _gEl;
 
 const _colorScale = d3.scaleThreshold()
   .domain([200000, 500000, 1000000, 3000000])
-  .range(['#1d3461', '#1e4d8c', '#2563eb', '#3b82f6', '#60a5fa']);
+  .range(['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']);
 
 /* Approximate state centroids [lon, lat] for fallback */
 const _CENTS = {
@@ -83,8 +83,8 @@ function _renderGeoJSON() {
     .attr('class', 'state-path')
     .attr('d', _pathFn)
     .attr('fill',   d => _stateColor(d.properties.codarea))
-    .attr('stroke', '#07101f')
-    .attr('stroke-width', 1.2)
+    .attr('stroke', '#334155')
+    .attr('stroke-width', 0.8)
     .on('click', (ev, d) => {
       ev.stopPropagation();
       if (typeof selEstado === 'function') selEstado(String(d.properties.codarea));
@@ -131,7 +131,7 @@ function _renderFallback() {
     _gEl.append('circle')
       .attr('cx', cx).attr('cy', cy).attr('r', r)
       .attr('fill', _stateColor(cod))
-      .attr('stroke', '#07101f').attr('stroke-width', 1.2)
+      .attr('stroke', '#334155').attr('stroke-width', 0.8)
       .attr('class', 'state-path').style('cursor', 'pointer')
       .attr('data-cod', cod)
       .on('click', () => { if (typeof selEstado === 'function') selEstado(cod); })
