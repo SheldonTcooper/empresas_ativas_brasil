@@ -8,7 +8,7 @@ const _colorScale = d3.scaleThreshold()
   .domain([200000, 500000, 1000000, 3000000])
   .range(['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']);
 
-/* Approximate state centroids [lon, lat] for fallback */
+/* Approximate state centroids [lon, lat] */
 const _CENTS = {
   '11':[-63.0,-10.8],'12':[-70.5,-9.0], '13':[-64.6,-4.5], '14':[-61.4,1.7],
   '15':[-52.5,-4.5], '16':[-51.8,1.5],  '17':[-48.3,-10.2],'21':[-44.5,-5.4],
@@ -19,18 +19,33 @@ const _CENTS = {
   '50':[-54.8,-20.5],'51':[-55.9,-13.0],'52':[-49.5,-16.0],'53':[-47.9,-15.8],
 };
 
+/* Bounding box polygon of Brazil for reliable fitExtent */
+const _BRAZIL_BOX = {
+  type: 'Feature',
+  geometry: {
+    type: 'Polygon',
+    coordinates: [[[-74,6],[-34,6],[-34,-35],[-74,-35],[-74,6]]]
+  }
+};
+
 function _stateColor(cod) {
-  if (typeof S !== 'undefined' && S.ibge === cod) return '#14b8a6';
+  if (typeof S !== 'undefined' && S.ibge === String(cod)) return '#14b8a6';
   const e = EST[String(cod)];
   return e ? _colorScale(e.e) : '#1a2744';
+}
+
+function _dims() {
+  const wrap = document.getElementById('map-wrap');
+  return {
+    W: wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.9),
+    H: wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.9),
+  };
 }
 
 function initMap() {
   if (typeof d3 === 'undefined') { console.error('[map] D3 não carregado'); return; }
 
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.9);
-  const H = wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.9);
+  const { W, H } = _dims();
 
   _svgEl = d3.select('#map-wrap').append('svg')
     .attr('width', '100%').attr('height', '100%')
@@ -44,12 +59,8 @@ function initMap() {
 
   _svgEl.call(_zoomBeh);
 
-  /* Initial projection — will be overridden by fitExtent in _renderGeoJSON */
-  _projFn = d3.geoMercator()
-    .center([-54, -15])
-    .scale(600)
-    .translate([W / 2, H / 2]);
-
+  _projFn = d3.geoMercator();
+  _projFn.fitExtent([[20, 20], [W - 20, H - 20]], _BRAZIL_BOX);
   _pathFn = d3.geoPath().projection(_projFn);
 
   _renderFallback();
@@ -78,10 +89,9 @@ function initMap() {
 }
 
 function _renderGeoJSON() {
+  const { W, H } = _dims();
   const tip  = document.getElementById('map-tip');
   const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.9);
-  const H = wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.9);
 
   _projFn.fitExtent([[20, 20], [W - 20, H - 20]], _geoData);
   _pathFn = d3.geoPath().projection(_projFn);
@@ -126,30 +136,29 @@ function _renderGeoJSON() {
 }
 
 function _renderFallback() {
+  const { W, H } = _dims();
   const wrap = document.getElementById('map-wrap');
   const tip  = document.getElementById('map-tip');
-  const W = wrap.clientWidth  || wrap.offsetWidth  || Math.round(window.innerWidth  * 0.9);
-  const H = wrap.clientHeight || wrap.offsetHeight || Math.round(window.innerHeight * 0.9);
 
-  /* Fit projection to centroids so circles appear in the right positions */
-  const centFeats = Object.entries(_CENTS).map(([cod, [lon, lat]]) => ({
-    type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { codarea: cod }
-  }));
-  _projFn.fitExtent([[30, 30], [W - 30, H - 30]], { type: 'FeatureCollection', features: centFeats });
-  _pathFn = d3.geoPath().projection(_projFn);
+  /* _projFn already fitted to _BRAZIL_BOX in initMap */
 
-  Object.entries(_CENTS).forEach(([cod, [lon, lat]]) => {
+  Object.entries(_CENTS).forEach(([cod, lonlat]) => {
     const e = EST[cod]; if (!e) return;
-    const [cx, cy] = _projFn([lon, lat]);
+    const pt = _projFn(lonlat);
+    if (!pt || isNaN(pt[0]) || isNaN(pt[1])) return;
+    const [cx, cy] = pt;
     const r = Math.min(Math.max(e.e / 80000, 9), 48);
 
     _gEl.append('circle')
       .attr('cx', cx).attr('cy', cy).attr('r', r)
-      .attr('fill', _stateColor(cod))
+      .style('fill', _stateColor(cod))
       .attr('stroke', '#334155').attr('stroke-width', 0.8)
       .attr('class', 'state-path').style('cursor', 'pointer')
       .attr('data-cod', cod)
-      .on('click', () => { if (typeof selEstado === 'function') selEstado(cod); })
+      .on('click', (ev) => {
+        ev.stopPropagation();
+        if (typeof selEstado === 'function') selEstado(cod);
+      })
       .on('mousemove', ev => {
         const rect = wrap.getBoundingClientRect();
         tip.style.display = 'block';
@@ -163,7 +172,7 @@ function _renderFallback() {
 
     _gEl.append('text')
       .attr('x', cx).attr('y', cy).attr('text-anchor', 'middle').attr('dy', '0.35em')
-      .attr('fill', 'rgba(255,255,255,0.8)').attr('font-size', '8px').attr('font-weight', '700')
+      .attr('fill', 'rgba(255,255,255,0.85)').attr('font-size', '8px').attr('font-weight', '700')
       .attr('pointer-events', 'none').text(e.uf);
   });
 }
@@ -183,8 +192,7 @@ function zoomToState(cod) {
   if (!_geoData) return;
   const feat = _geoData.features.find(f => String(f.properties.codarea) === cod);
   if (!feat) return;
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const { W, H } = _dims();
   const [[x0, y0], [x1, y1]] = _pathFn.bounds(feat);
   const dx = x1 - x0, dy = y1 - y0;
   const scale = Math.max(0.5, Math.min(12, 0.85 / Math.max(dx / W, dy / H)));
