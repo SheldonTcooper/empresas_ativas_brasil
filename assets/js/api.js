@@ -39,7 +39,8 @@ async function fetchEmpresas(municipioIbge, uf, municipioNome, cnae, page = 1) {
         `/api/empresas?municipio=${municipioIbge}&cnae=${cnae}&page=${page}&limit=50`
       );
       _apiOnline = true;
-      return { source: 'api', ...data };
+      /* banco ainda não importado: cai para demo */
+      if (data.total > 0) return { source: 'api', ...data };
     } catch (err) {
       console.warn('[API] Indisponível — modo demo:', err.message);
       _apiOnline = false;

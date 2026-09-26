@@ -128,7 +128,7 @@ async function showTable(page) {
     '<tr><td colspan="11" style="text-align:center;padding:40px">' +
     '<div class="sp" style="margin:0 auto 10px"></div>Carregando empresas...</td></tr>';
 
-  const result = await fetchEmpresas(S.ibge, S.uf, S.munNome, S.cnae, S.page);
+  const result = await fetchEmpresas(S.munId, S.uf, S.munNome, S.cnae, S.page);
   S.companies = result.empresas;
   S.filtered  = result.empresas;
   S.totalApi  = result.total;
