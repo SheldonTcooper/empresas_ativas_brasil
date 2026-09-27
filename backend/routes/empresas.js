@@ -22,13 +22,14 @@ function fmtCNPJStr(s) {
 async function fetchBrasilio(municipioNome, cnae, page, limit) {
   const nome = normNome(municipioNome);
   const url  = `https://brasil.io/api/dataset/socios-brasil/empresas/data/?cnae_fiscal=${encodeURIComponent(cnae)}&municipio=${encodeURIComponent(nome)}&situacao_cadastral=ATIVA&page=${page}&page_size=${limit}`;
-  const res  = await fetch(url, {
-    headers: {
-      'User-Agent': 'empresas-ativas-brasil/1.0 (prospeccao)',
-      'Accept': 'application/json',
-    },
-    signal: AbortSignal.timeout(20000),
-  });
+  const headers = {
+    'User-Agent': 'empresas-ativas-brasil/1.0 (prospeccao)',
+    'Accept': 'application/json',
+  };
+  if (process.env.BRASILIO_TOKEN) {
+    headers['Authorization'] = `Token ${process.env.BRASILIO_TOKEN}`;
+  }
+  const res  = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error(`Brasil.io HTTP ${res.status}`);
   const data = await res.json();
   const empresas = (data.results || []).map(r => {
