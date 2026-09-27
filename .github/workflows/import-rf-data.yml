@@ -1,0 +1,72 @@
+name: Importar dados RF para VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      only_small:
+        description: 'Baixar só Municipios + Cnaes (sem Empresas/Estabelecimentos)?'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+jobs:
+  transfer:
+    name: Download RF → VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Criar pasta na VPS
+        run: |
+          ssh root@${{ secrets.VPS_HOST }} "mkdir -p /tmp/cnpj_fast"
+
+      - name: Baixar e enviar Municipios + Cnaes
+        run: |
+          for f in Municipios Cnaes; do
+            echo "⬇ $f.zip"
+            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/${f}.zip" -O "/tmp/${f}.zip"
+            echo "⬆ $f.zip → VPS"
+            scp "/tmp/${f}.zip" "root@${{ secrets.VPS_HOST }}:/tmp/cnpj_fast/${f}.zip"
+            rm "/tmp/${f}.zip"
+          done
+          echo "✅ Referências enviadas"
+
+      - name: Baixar e enviar Empresas (10 partes)
+        if: ${{ github.event.inputs.only_small != 'true' }}
+        run: |
+          for i in 0 1 2 3 4 5 6 7 8 9; do
+            echo "⬇ Empresas${i}.zip"
+            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/Empresas${i}.zip" -O "/tmp/Emp.zip"
+            echo "⬆ Empresas${i}.zip → VPS"
+            scp "/tmp/Emp.zip" "root@${{ secrets.VPS_HOST }}:/tmp/cnpj_fast/Empresas${i}.zip"
+            rm /tmp/Emp.zip
+          done
+          echo "✅ Empresas enviadas"
+
+      - name: Baixar e enviar Estabelecimentos (10 partes)
+        if: ${{ github.event.inputs.only_small != 'true' }}
+        run: |
+          for i in 0 1 2 3 4 5 6 7 8 9; do
+            echo "⬇ Estabelecimentos${i}.zip"
+            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/Estabelecimentos${i}.zip" -O "/tmp/Est.zip"
+            echo "⬆ Estabelecimentos${i}.zip → VPS"
+            scp "/tmp/Est.zip" "root@${{ secrets.VPS_HOST }}:/tmp/cnpj_fast/Estabelecimentos${i}.zip"
+            rm /tmp/Est.zip
+          done
+          echo "✅ Estabelecimentos enviados"
+
+      - name: Rodar importação na VPS
+        run: |
+          ssh root@${{ secrets.VPS_HOST }} \
+            "cd /var/www/empresas_ativas_brasil && \
+             WORK_DIR=/tmp/cnpj_fast \
+             DATABASE_URL=\$(grep DATABASE_URL backend/.env | head -1 | cut -d'=' -f2-) \
+             bash backend/db/import-fast.sh 2>&1 | tail -30"
