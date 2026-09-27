@@ -36,7 +36,7 @@ async function fetchEmpresas(municipioIbge, uf, municipioNome, cnae, page = 1) {
   if (_API.base && _apiOnline !== false) {
     try {
       const data = await _apiFetch(
-        `/api/empresas?municipio=${municipioIbge}&cnae=${cnae}&page=${page}&limit=50`
+        `/api/empresas?municipio=${municipioIbge}&cnae=${cnae}&page=${page}&limit=50&municipioNome=${encodeURIComponent(municipioNome || '')}`
       );
       _apiOnline = true;
       /* banco ainda não importado: cai para demo */

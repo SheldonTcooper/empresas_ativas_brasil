@@ -143,7 +143,16 @@ function _updateTblHeader() {
   const cnt  = document.getElementById('tbl-cnt');
   const demo = document.getElementById('demo-badge');
   cnt.textContent = `${S.filtered.length} de ${S.totalApi.toLocaleString('pt-BR')} empresas`;
-  demo.hidden     = S.source !== 'demo';
+  if (S.source === 'demo') {
+    demo.hidden = false;
+    demo.textContent = '⚠ Dados demonstrativos';
+  } else if (S.source === 'brasilio') {
+    demo.hidden = false;
+    demo.textContent = '🟢 Brasil.io — dados reais RF';
+    demo.style.color = '#2a9d5c';
+  } else {
+    demo.hidden = true;
+  }
 }
 
 function renderRows(list) {

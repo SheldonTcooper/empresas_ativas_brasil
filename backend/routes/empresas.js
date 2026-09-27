@@ -9,6 +9,53 @@ const pool = new Pool({
 
 const PORTE = { '00':'Não Informado','01':'MEI','03':'ME','05':'EPP','07':'Demais' };
 
+/* ── Brasil.io fallback ─────────────────────────────────────────────── */
+function normNome(nome) {
+  return (nome || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+
+function fmtCNPJStr(s) {
+  const c = (s || '').replace(/\D/g, '').padStart(14, '0');
+  return `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}/${c.slice(8,12)}-${c.slice(12)}`;
+}
+
+async function fetchBrasilio(municipioNome, cnae, page, limit) {
+  const nome = normNome(municipioNome);
+  const url  = `https://brasil.io/api/dataset/socios-brasil/empresas/data/?cnae_fiscal=${encodeURIComponent(cnae)}&municipio=${encodeURIComponent(nome)}&situacao_cadastral=ATIVA&page=${page}&page_size=${limit}`;
+  const res  = await fetch(url, {
+    headers: {
+      'User-Agent': 'empresas-ativas-brasil/1.0 (prospeccao)',
+      'Accept': 'application/json',
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`Brasil.io HTTP ${res.status}`);
+  const data = await res.json();
+  const empresas = (data.results || []).map(r => {
+    const nomeEmp = ((r.nome_fantasia || '') || r.razao_social || '').trim();
+    const nq = encodeURIComponent(nomeEmp);
+    return {
+      cnpj:     fmtCNPJStr(r.cnpj),
+      razao:    (r.razao_social || '').trim(),
+      fantasia: (r.nome_fantasia || '').trim(),
+      tipo:     r.tipo || '—',
+      abertura: r.abertura || '',
+      porte:    r.porte || '—',
+      logr: '', num: '', compl: '', bairro: '', cep: '',
+      municipio: r.municipio || municipioNome || '',
+      uf:       r.uf || '',
+      tel1: '', tel2: '', email: '', site: '',
+      maps:      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nomeEmp + ' ' + (r.municipio || ''))}`,
+      linkedin:  `https://www.linkedin.com/search/results/companies/?keywords=${nq}`,
+      instagram: `https://www.instagram.com/explore/search/keyword/?q=${nq}`,
+      tiktok:    `https://www.tiktok.com/search?q=${nq}`,
+      facebook:  `https://www.facebook.com/search/pages/?q=${nq}`,
+      wpp:       '',
+    };
+  });
+  return { total: data.count || 0, page, limit, empresas };
+}
+
 function fmtCNPJ(b, o, d) {
   const s = b.padStart(8,'0') + o.padStart(4,'0') + d.padStart(2,'0');
   return `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5,8)}/${s.slice(8,12)}-${s.slice(12)}`;
@@ -38,9 +85,9 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
-/* ── GET /api/empresas?municipio=3550308&cnae=4711301&page=1&limit=50 ── */
+/* ── GET /api/empresas?municipio=3550308&cnae=4711301&page=1&limit=50&municipioNome=Sao+Paulo ── */
 router.get('/', async (req, res, next) => {
-  const { municipio, cnae, page = 1, limit = 50 } = req.query;
+  const { municipio, cnae, page = 1, limit = 50, municipioNome = '' } = req.query;
   if (!municipio || !cnae)
     return res.status(400).json({ error: 'Parâmetros obrigatórios: municipio, cnae' });
 
@@ -102,11 +149,24 @@ router.get('/', async (req, res, next) => {
       ...buildLinks(r),
     }));
 
+    const total = parseInt(count.rows[0].total);
+
+    /* DB vazio → tenta Brasil.io como fallback */
+    if (total === 0 && municipioNome) {
+      try {
+        const bl = await fetchBrasilio(municipioNome, cnae, parseInt(page), lim);
+        if (bl.total > 0) return res.json({ ...bl, source: 'brasilio' });
+      } catch (blErr) {
+        console.warn('[Brasil.io] Indisponível:', blErr.message);
+      }
+    }
+
     res.json({
-      total:   parseInt(count.rows[0].total),
+      total,
       page:    parseInt(page),
       limit:   lim,
       empresas,
+      source: total > 0 ? 'db' : 'empty',
     });
   } catch (err) {
     next(err);
