@@ -14,6 +14,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '2mb' }));
 
+app.use(express.static(require('path').join(__dirname, '../public')));
+
 app.use('/api/empresas',    require('./routes/empresas'));
 app.use('/api/diagnostico', require('./routes/diagnostico'));
 
