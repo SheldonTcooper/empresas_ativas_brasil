@@ -34,8 +34,10 @@ jobs:
         run: |
           for f in Municipios Cnaes; do
             echo "⬇ $f.zip"
-            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/${f}.zip" -O "/tmp/${f}.zip"
-            echo "⬆ $f.zip → VPS"
+            wget --timeout=30 --tries=3 "https://dadosabertos.rfb.gov.br/CNPJ/${f}.zip" -O "/tmp/${f}.zip" || { echo "❌ Falha no download"; exit 1; }
+            SIZE=$(stat -c%s "/tmp/${f}.zip" 2>/dev/null || echo 0)
+            if [ "$SIZE" -eq 0 ]; then echo "❌ $f.zip vazio"; exit 1; fi
+            echo "✅ $f.zip ($SIZE bytes)"
             scp $SSH_OPTS "/tmp/${f}.zip" "$VPS:/tmp/cnpj_fast/${f}.zip"
             rm "/tmp/${f}.zip"
           done
@@ -46,8 +48,10 @@ jobs:
         run: |
           for i in 0 1 2 3 4 5 6 7 8 9; do
             echo "⬇ Empresas${i}.zip"
-            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/Empresas${i}.zip" -O "/tmp/Emp.zip"
-            echo "⬆ Empresas${i}.zip → VPS"
+            wget --timeout=60 --tries=3 "https://dadosabertos.rfb.gov.br/CNPJ/Empresas${i}.zip" -O "/tmp/Emp.zip" || { echo "❌ Falha"; exit 1; }
+            SIZE=$(stat -c%s "/tmp/Emp.zip" 2>/dev/null || echo 0)
+            if [ "$SIZE" -eq 0 ]; then echo "❌ Vazio"; exit 1; fi
+            echo "✅ Empresas${i} ($SIZE bytes)"
             scp $SSH_OPTS "/tmp/Emp.zip" "$VPS:/tmp/cnpj_fast/Empresas${i}.zip"
             rm /tmp/Emp.zip
           done
@@ -58,8 +62,10 @@ jobs:
         run: |
           for i in 0 1 2 3 4 5 6 7 8 9; do
             echo "⬇ Estabelecimentos${i}.zip"
-            wget -q "https://dadosabertos.rfb.gov.br/CNPJ/Estabelecimentos${i}.zip" -O "/tmp/Est.zip"
-            echo "⬆ Estabelecimentos${i}.zip → VPS"
+            wget --timeout=60 --tries=3 "https://dadosabertos.rfb.gov.br/CNPJ/Estabelecimentos${i}.zip" -O "/tmp/Est.zip" || { echo "❌ Falha"; exit 1; }
+            SIZE=$(stat -c%s "/tmp/Est.zip" 2>/dev/null || echo 0)
+            if [ "$SIZE" -eq 0 ]; then echo "❌ Vazio"; exit 1; fi
+            echo "✅ Estabelecimentos${i} ($SIZE bytes)"
             scp $SSH_OPTS "/tmp/Est.zip" "$VPS:/tmp/cnpj_fast/Estabelecimentos${i}.zip"
             rm /tmp/Est.zip
           done
