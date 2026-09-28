@@ -790,8 +790,41 @@
         .attr('width', width)
         .attr('height', height);
 
-      // Carregar GeoJSON e renderizar
-      d3.json('/brasil.geojson').then(geojson => {
+      // GeoJSON inline
+      const geojson = {
+        "type": "FeatureCollection",
+        "features": [
+          {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[44,-25],[51,-25],[51,-19],[44,-19],[44,-25]]]}},
+          {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[41,-23],[43,-23],[43,-20],[41,-20],[41,-23]]]}},
+          {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[39,-23],[46,-23],[46,-14],[39,-14],[39,-23]]]}},
+          {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[41,-17],[48,-17],[48,-9],[41,-9],[41,-17]]]}},
+          {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[48,-27],[55,-27],[55,-22],[48,-22],[48,-27]]]}},
+          {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[48,-30],[55,-30],[55,-26],[48,-26],[48,-30]]]}},
+          {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[49,-33],[56,-33],[56,-27],[49,-27],[49,-33]]]}},
+          {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[34,-10],[37,-10],[37,-7],[34,-7],[34,-10]]]}},
+          {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[37,-7],[41,-7],[41,-3],[37,-3],[37,-7]]]}},
+          {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[49,-4],[58,-4],[58,2],[49,2],[49,-4]]]}},
+          {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[56,-3],[73,-3],[73,5],[56,5],[56,-3]]]}},
+          {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[46,-19],[53,-19],[53,-13],[46,-13],[46,-19]]]}},
+          {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[47.8,-15.8],[48.2,-15.8],[48.2,-15.4],[47.8,-15.4],[47.8,-15.8]]]}},
+          {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[39,-21],[42,-21],[42,-17],[39,-17],[39,-21]]]}},
+          {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[54,-17],[61,-17],[61,-8],[54,-8],[54,-17]]]}},
+          {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[53,-24],[57,-24],[57,-19],[53,-19],[53,-24]]]}},
+          {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[41,-10],[46,-10],[46,-2],[41,-2],[41,-10]]]}},
+          {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[40,-11],[45,-11],[45,-2],[40,-2],[40,-11]]]}},
+          {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[35,-8],[37,-8],[37,-6],[35,-6],[35,-8]]]}},
+          {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[35,-6],[37,-6],[37,-5],[35,-5],[35,-6]]]}},
+          {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[36,-9],[37,-9],[37,-8],[36,-8],[36,-9]]]}},
+          {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[36,-11],[37,-11],[37,-10],[36,-10],[36,-11]]]}},
+          {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[59,-14],[66,-14],[66,-8],[59,-8],[59,-14]]]}},
+          {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[70,-11],[70.5,-11],[70.5,-10.5],[70,-10.5],[70,-11]]]}},
+          {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[51,-1],[54,-1],[54,3],[51,3],[51,-1]]]}},
+          {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[58,-2],[61,-2],[61,5],[58,5],[58,-2]]]}},
+          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[48,-13],[50,-13],[50,-10],[48,-10],[48,-13]]]}}
+        ]
+      };
+
+      (function renderizarMapa(geojson) {
         // Projeção e path generator
         const projection = d3.geoMercator()
           .fitSize([width, height], geojson);
@@ -877,14 +910,7 @@
           .attr('pointer-events', 'none')
           .attr('text-shadow', '1px 1px 1px rgba(0,0,0,0.8)')
           .text(d => d.properties.uf);
-      }).catch(err => {
-        console.error('Erro ao carregar mapa:', err);
-        svg.append('text')
-          .attr('x', width / 2)
-          .attr('y', height / 2)
-          .attr('text-anchor', 'middle')
-          .text('Erro ao carregar mapa');
-      });
+      })(geojson);
     }
 
     // Executar ao carregar
