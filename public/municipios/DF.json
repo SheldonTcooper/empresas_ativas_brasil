@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "nome": "Brasília",
+        "id": 0,
+        "codigo": "0"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -48.38,
+              -16.29
+            ],
+            [
+              -47.38,
+              -16.29
+            ],
+            [
+              -47.38,
+              -15.29
+            ],
+            [
+              -48.38,
+              -15.29
+            ],
+            [
+              -48.38,
+              -16.29
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
