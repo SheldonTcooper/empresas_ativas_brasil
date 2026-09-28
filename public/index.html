@@ -3,49 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Empresas Ativas Brasil - Prospeccão de Empresas</title>
+  <title>Empresas Ativas Brasil</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
       --primary: #667eea;
       --primary-dark: #5568d3;
-      --primary-light: #8b9dff;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
       --gray-50: #f9fafb;
       --gray-100: #f3f4f6;
       --gray-200: #e5e7eb;
-      --gray-300: #d1d5db;
-      --gray-400: #9ca3af;
-      --gray-500: #6b7280;
-      --gray-600: #4b5563;
       --gray-700: #374151;
       --gray-800: #1f2937;
       --gray-900: #111827;
       --blue-50: #eff6ff;
-      --blue-100: #dbeafe;
-      --blue-200: #bfdbfe;
-      --blue-400: #60a5fa;
-      --blue-600: #2563eb;
+      --success: #10b981;
     }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--gray-50);
       color: var(--gray-900);
-      line-height: 1.6;
     }
-
     header {
       background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
       color: white;
       padding: 20px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-
     .header-content {
       max-width: 1400px;
       margin: 0 auto;
@@ -54,81 +37,51 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .logo {
       font-size: 24px;
       font-weight: 700;
-      letter-spacing: -0.5px;
     }
-
     .header-stats {
       display: flex;
       gap: 30px;
-      font-size: 14px;
     }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .stat-label {
-      opacity: 0.9;
-    }
-
-    .stat-value {
-      font-weight: 600;
-      font-size: 16px;
-    }
-
     .container {
       max-width: 1400px;
       margin: 0 auto;
       padding: 30px 20px;
     }
-
     .layout {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 30px;
       margin-bottom: 30px;
     }
-
     .panel {
       background: white;
       border-radius: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       overflow: hidden;
     }
-
     .panel-header {
       background: var(--gray-50);
       border-bottom: 1px solid var(--gray-200);
       padding: 16px 24px;
       font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
-
     .panel-body {
       padding: 24px;
     }
-
     .filters {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 20px;
     }
-
     .filter-group {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
-
     label {
       font-size: 13px;
       font-weight: 600;
@@ -136,28 +89,23 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
     input, select {
       padding: 10px 12px;
-      border: 1px solid var(--gray-300);
+      border: 1px solid var(--gray-200);
       border-radius: 8px;
       font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
     }
-
     input:focus, select:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
-
     .button-group {
       display: flex;
       gap: 12px;
-      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
-
     button {
       padding: 10px 16px;
       border: none;
@@ -165,47 +113,21 @@
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-
     .btn-primary {
       background: var(--primary);
       color: white;
     }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-
     .btn-secondary {
       background: var(--gray-200);
       color: var(--gray-800);
     }
-
-    .btn-secondary:hover {
-      background: var(--gray-300);
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: white;
-    }
-
-    .btn-success:hover {
-      background: #059669;
-    }
-
     #map {
       width: 100%;
       height: 500px;
       background: var(--blue-50);
       border-radius: 8px;
     }
-
     .map-legend {
       margin-top: 16px;
       padding: 16px;
@@ -213,193 +135,57 @@
       border-radius: 8px;
       font-size: 12px;
     }
-
     .legend-item {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 8px;
     }
-
     .legend-color {
       width: 20px;
       height: 20px;
       border-radius: 4px;
     }
-
-    .results-section {
-      grid-column: 1 / -1;
-    }
-
-    .table-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .results-info {
-      font-size: 13px;
-      color: var(--gray-600);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    thead {
-      background: var(--gray-50);
-      border-bottom: 2px solid var(--gray-200);
-    }
-
-    th {
-      padding: 12px 16px;
-      text-align: left;
-      font-weight: 600;
-      color: var(--gray-700);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
-    }
-
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--gray-200);
-    }
-
-    tbody tr:hover {
-      background: var(--gray-50);
-    }
-
-    .company-name {
-      font-weight: 600;
-      color: var(--gray-900);
-    }
-
-    .cnpj {
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      color: var(--gray-600);
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .badge-matriz {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .badge-filial {
-      background: #fce7f3;
-      color: #831843;
-    }
-
-    .links {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .link-btn {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: var(--gray-100);
-      text-decoration: none;
-      text-align: center;
-      line-height: 28px;
-      font-size: 14px;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-
-    .link-btn:hover {
-      background: var(--primary);
-      color: white;
-      transform: scale(1.1);
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--gray-600);
-    }
-
-    .empty-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .error {
-      padding: 20px;
-      background: #fee2e2;
-      border-left: 4px solid var(--danger);
-      color: #991b1b;
-      border-radius: 4px;
-      font-size: 13px;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px 20px;
-    }
-
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--gray-200);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
     .tip {
       background: #fef3c7;
-      border-left: 4px solid var(--warning);
+      border-left: 4px solid #f59e0b;
       padding: 12px 16px;
       border-radius: 4px;
       font-size: 13px;
       color: #92400e;
       margin-bottom: 16px;
     }
-
-    @media (max-width: 1024px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
+    .results-section {
+      grid-column: 1 / -1;
     }
-
-    @media (max-width: 640px) {
-      .filters {
-        grid-template-columns: 1fr;
-      }
-
-      .header-stats {
-        flex-direction: column;
-        gap: 12px;
-      }
+    .results-info {
+      font-size: 13px;
+      color: var(--gray-600);
     }
-
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead {
+      background: var(--gray-50);
+      border-bottom: 2px solid var(--gray-200);
+    }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray-600);
+    }
     svg text {
       pointer-events: none;
       font-size: 11px;
@@ -407,16 +193,17 @@
       fill: #374151;
       text-anchor: middle;
     }
-
     .estado {
       stroke: white;
       stroke-width: 1.5px;
-    }
-
-    .estado:hover {
       cursor: pointer;
+    }
+    .estado:hover {
       filter: brightness(1.2);
       stroke-width: 2.5px;
+    }
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -425,13 +212,13 @@
     <div class="header-content">
       <div class="logo">🏢 Empresas Ativas Brasil</div>
       <div class="header-stats">
-        <div class="stat-item">
-          <div class="stat-label">Total de Empresas</div>
-          <div class="stat-value"><span id="total">45.1M</span>+</div>
+        <div>
+          <div style="opacity: 0.9; font-size: 14px;">Total de Empresas</div>
+          <div style="font-weight: 600; font-size: 16px;"><span id="total">45.1M</span>+</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-label">Resultados</div>
-          <div class="stat-value"><span id="showing">0</span></div>
+        <div>
+          <div style="opacity: 0.9; font-size: 14px;">Resultados</div>
+          <div style="font-weight: 600; font-size: 16px;"><span id="showing">0</span></div>
         </div>
       </div>
     </div>
@@ -439,11 +226,8 @@
 
   <div class="container">
     <div class="layout">
-      <!-- ESQUERDA: MAPA -->
       <div class="panel">
-        <div class="panel-header">
-          📍 Mapa do Brasil - Densidade de Empresas
-        </div>
+        <div class="panel-header">📍 Mapa do Brasil - Densidade de Empresas</div>
         <div class="panel-body">
           <div id="map"></div>
           <div class="map-legend">
@@ -464,99 +248,54 @@
         </div>
       </div>
 
-      <!-- DIREITA: FILTROS -->
       <div class="panel">
-        <div class="panel-header">
-          🔍 Filtros de Busca
-        </div>
+        <div class="panel-header">🔍 Filtros de Busca</div>
         <div class="panel-body">
           <div class="filters">
             <div class="filter-group">
-              <label for="estado">Estado (UF)</label>
+              <label>Estado (UF)</label>
               <select id="estado">
                 <option value="">Selecione um estado...</option>
                 <option value="SP">São Paulo (SP)</option>
                 <option value="RJ">Rio de Janeiro (RJ)</option>
                 <option value="MG">Minas Gerais (MG)</option>
                 <option value="BA">Bahia (BA)</option>
-                <option value="SC">Santa Catarina (SC)</option>
-                <option value="RS">Rio Grande do Sul (RS)</option>
-                <option value="PA">Pará (PA)</option>
-                <option value="PR">Paraná (PR)</option>
-                <option value="GO">Goiás (GO)</option>
-                <option value="DF">Distrito Federal (DF)</option>
-                <option value="PE">Pernambuco (PE)</option>
-                <option value="CE">Ceará (CE)</option>
-                <option value="ES">Espírito Santo (ES)</option>
-                <option value="MA">Maranhão (MA)</option>
-                <option value="PB">Paraíba (PB)</option>
-                <option value="MT">Mato Grosso (MT)</option>
-                <option value="MS">Mato Grosso do Sul (MS)</option>
-                <option value="PI">Piauí (PI)</option>
-                <option value="RN">Rio Grande do Norte (RN)</option>
-                <option value="AL">Alagoas (AL)</option>
-                <option value="SE">Sergipe (SE)</option>
-                <option value="RO">Rondônia (RO)</option>
-                <option value="AC">Acre (AC)</option>
-                <option value="AM">Amazonas (AM)</option>
-                <option value="RR">Roraima (RR)</option>
-                <option value="AP">Amapá (AP)</option>
-                <option value="TO">Tocantins (TO)</option>
               </select>
             </div>
-
             <div class="filter-group">
-              <label for="municipio">Município</label>
+              <label>Município</label>
               <input type="text" id="municipio" placeholder="Ex: São Paulo...">
             </div>
-
             <div class="filter-group">
-              <label for="cnae">CNAE (Atividade)</label>
-              <input type="text" id="cnae" placeholder="Ex: 4711301 (Comércio Varejista)">
+              <label>CNAE (Atividade)</label>
+              <input type="text" id="cnae" placeholder="Ex: 4711301">
             </div>
-
             <div class="filter-group">
-              <label for="limit">Limite de Resultados</label>
+              <label>Limite de Resultados</label>
               <select id="limit">
-                <option value="10">10 resultados</option>
-                <option value="25" selected>25 resultados</option>
+                <option value="25">25 resultados</option>
                 <option value="50">50 resultados</option>
-                <option value="100">100 resultados</option>
               </select>
             </div>
           </div>
-
           <div class="button-group">
             <button class="btn-primary" onclick="buscarEmpresas()">🔍 BUSCAR</button>
             <button class="btn-secondary" onclick="limparFiltros()">🗑️ LIMPAR</button>
           </div>
-
-          <div class="tip">
-            💡 <strong>Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima.
-          </div>
+          <div class="tip">💡 Dica: Clique em um estado no mapa para filtrar automaticamente.</div>
         </div>
       </div>
     </div>
 
-    <!-- RESULTADOS -->
     <div class="panel results-section">
       <div class="panel-header">
         📊 Resultados da Busca
-        <div class="results-info">
-          Mostrando <strong id="showing">0</strong> de <strong id="total">0</strong> empresas
-        </div>
+        <span class="results-info">Mostrando <strong id="showing2">0</strong> de <strong id="total2">0</strong></span>
       </div>
       <div class="panel-body">
-        <div class="table-controls">
-          <div></div>
-          <button class="btn-success" id="export-btn" onclick="exportarCSV()" style="display: none;">
-            📥 Exportar CSV
-          </button>
-        </div>
         <div id="results-container">
           <div class="empty-state">
-            <div class="empty-icon">📭</div>
-            <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
+            <p>Preencha os filtros e clique em "Buscar"</p>
           </div>
         </div>
       </div>
@@ -564,162 +303,6 @@
   </div>
 
   <script>
-    let empresasData = [];
-
-    function buscarEmpresas() {
-      const estado = document.getElementById('estado').value || '';
-      const municipio = document.getElementById('municipio').value || '';
-      const cnae = document.getElementById('cnae').value || '';
-      const limit = document.getElementById('limit').value || '25';
-
-      mostraCarregando();
-
-      const params = new URLSearchParams({
-        estado: estado.toUpperCase(),
-        municipio: municipio.toUpperCase(),
-        cnae: cnae,
-        limit: limit
-      });
-
-      fetch(`/api/empresas?${params}`)
-        .then(res => res.json())
-        .then(data => {
-          empresasData = data.data || [];
-          document.getElementById('showing').textContent = empresasData.length;
-          document.getElementById('total').textContent = data.total || 0;
-          document.getElementById('results-count').textContent = new Intl.NumberFormat('pt-BR').format(data.total || 0);
-
-          if (empresasData.length > 0) {
-            document.getElementById('export-btn').style.display = 'inline-block';
-            renderizarTabela(empresasData);
-          } else {
-            document.getElementById('results-container').innerHTML = `
-              <div class="empty-state">
-                <div class="empty-icon">🔍</div>
-                <p>Nenhuma empresa encontrada com esses filtros</p>
-              </div>
-            `;
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById('results-container').innerHTML = `
-            <div class="error">Erro ao buscar empresas: ${err.message}</div>
-          `;
-        });
-    }
-
-    function mostraCarregando() {
-      document.getElementById('results-container').innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          <p style="margin-top: 12px;">Carregando empresas...</p>
-        </div>
-      `;
-    }
-
-    function renderizarTabela(empresas) {
-      const html = `
-        <table>
-          <thead>
-            <tr>
-              <th>CNPJ</th>
-              <th>Razão Social / Fantasia</th>
-              <th>Tipo</th>
-              <th>Abertura</th>
-              <th>Telefone</th>
-              <th>E-mail</th>
-              <th>Endereço</th>
-              <th>Links</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${empresas.map(e => `
-              <tr>
-                <td><span class="cnpj">${e.cnpj}</span></td>
-                <td>
-                  <div class="company-name">${e.fantasia || e.razao}</div>
-                  <div style="font-size: 11px; color: var(--gray-500);">${e.razao}</div>
-                </td>
-                <td><span class="badge ${e.tipo === 'MATRIZ' ? 'badge-matriz' : 'badge-filial'}">${e.tipo}</span></td>
-                <td>${e.abertura || '—'}</td>
-                <td>${e.tel1 || e.tel2 || '—'}</td>
-                <td><a href="mailto:${e.email}" style="color: var(--primary); text-decoration: none;">${e.email || '—'}</a></td>
-                <td><small>${e.logr} ${e.num} ${e.bairro} ${e.municipio}</small></td>
-                <td>
-                  <div class="links">
-                    ${e.maps ? `<a href="${e.maps}" target="_blank" class="link-btn" title="Google Maps">📍</a>` : ''}
-                    ${e.wpp ? `<a href="${e.wpp}" target="_blank" class="link-btn" title="WhatsApp">💬</a>` : ''}
-                    ${e.linkedin ? `<a href="${e.linkedin}" target="_blank" class="link-btn" title="LinkedIn">in</a>` : ''}
-                    ${e.instagram ? `<a href="${e.instagram}" target="_blank" class="link-btn" title="Instagram">📷</a>` : ''}
-                    ${e.facebook ? `<a href="${e.facebook}" target="_blank" class="link-btn" title="Facebook">f</a>` : ''}
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-      document.getElementById('results-container').innerHTML = html;
-    }
-
-    function exportarCSV() {
-      if (empresasData.length === 0) {
-        alert('Nenhum dado para exportar');
-        return;
-      }
-
-      const headers = ['CNPJ', 'Razão Social', 'Fantasia', 'Tipo', 'Abertura', 'Telefone 1', 'Telefone 2', 'Email', 'Endereço', 'Bairro', 'CEP', 'Municipio', 'UF', 'Maps', 'LinkedIn', 'Instagram', 'TikTok', 'Facebook', 'WhatsApp'];
-
-      const rows = empresasData.map(e => [
-        e.cnpj,
-        e.razao,
-        e.fantasia,
-        e.tipo,
-        e.abertura,
-        e.tel1,
-        e.tel2,
-        e.email,
-        e.logr,
-        e.bairro,
-        e.cep,
-        e.municipio,
-        e.uf,
-        e.maps,
-        e.linkedin,
-        e.instagram,
-        e.tiktok,
-        e.facebook,
-        e.wpp
-      ]);
-
-      let csv = headers.map(h => `"${h}"`).join(',') + '\n';
-      csv += rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `empresas_${new Date().toISOString().slice(0,10)}.csv`;
-      link.click();
-    }
-
-    function limparFiltros() {
-      document.getElementById('estado').value = '';
-      document.getElementById('municipio').value = '';
-      document.getElementById('cnae').value = '';
-      document.getElementById('limit').value = '25';
-      document.getElementById('results-container').innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
-        </div>
-      `;
-      document.getElementById('export-btn').style.display = 'none';
-      document.getElementById('showing').textContent = '0';
-      document.getElementById('total').textContent = '0';
-    }
-
-    // Dados de densidade por estado
     const densidadeEstados = {
       'SP': 0.9, 'RJ': 0.8, 'MG': 0.7, 'BA': 0.6, 'SC': 0.6, 'RS': 0.6,
       'PA': 0.4, 'PR': 0.7, 'GO': 0.5, 'DF': 0.5, 'PE': 0.5, 'CE': 0.5,
@@ -728,7 +311,6 @@
       'RR': 0.1, 'AP': 0.1, 'TO': 0.2
     };
 
-    // Inicializar mapa
     function inicializarMapa() {
       const container = document.getElementById('map');
       const width = container.offsetWidth;
@@ -738,7 +320,6 @@
         .attr('width', width)
         .attr('height', height);
 
-      // GeoJSON com coordenadas brasileiras reais
       const geojson = {
         "type": "FeatureCollection",
         "features": [
@@ -768,91 +349,60 @@
           {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-26],[-54,-26],[-54,-30],[-48,-30],[-48,-26]]]}},
           {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44,-19],[-51,-19],[-51,-25],[-44,-25],[-44,-19]]]}},
           {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-10],[-37,-10],[-37,-11],[-36,-11],[-36,-10]]]}},
-          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}
+          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}}
         ]
       };
 
-      const renderMap = function(geojson) {
-        console.log('🗺️ Renderizando mapa com', geojson.features.length, 'estados');
+      const projection = d3.geoMercator().fitSize([width, height], geojson);
+      const path = d3.geoPath().projection(projection);
+      const colorScale = d3.scaleLinear().domain([0, 1]).range(['#b3d9ff', '#2952a3']);
 
-        // Projeção Mercator
-        const projection = d3.geoMercator()
-          .fitSize([width, height], geojson);
+      svg.selectAll('.estado')
+        .data(geojson.features)
+        .enter()
+        .append('path')
+        .attr('class', 'estado')
+        .attr('d', path)
+        .style('fill', d => colorScale(densidadeEstados[d.properties.uf] || 0.3))
+        .on('click', d => {
+          document.getElementById('estado').value = d.properties.uf;
+          buscarEmpresas();
+        });
 
-        const path = d3.geoPath().projection(projection);
-
-        const colorScale = d3.scaleLinear()
-          .domain([0, 1])
-          .range(['#b3d9ff', '#2952a3']);
-
-        // Desenhar estados
-        svg.selectAll('.estado')
-          .data(geojson.features)
-          .enter()
-          .append('path')
-          .attr('class', 'estado')
-          .attr('d', path)
-          .style('fill', d => {
-            const density = densidadeEstados[d.properties.uf] || 0.3;
-            return colorScale(density);
-          })
-          .on('mouseenter', function(event, d) {
-            d3.select(this).style('filter', 'brightness(1.2)');
-            const tooltip = document.createElement('div');
-            tooltip.className = 'map-tooltip';
-            tooltip.textContent = `${d.properties.name} (${d.properties.uf})`;
-            tooltip.style.cssText = `position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; left: ${event.pageX + 10}px; top: ${event.pageY + 10}px; pointer-events: none; z-index: 10000;`;
-            document.body.appendChild(tooltip);
-            this.tooltip = tooltip;
-          })
-          .on('mousemove', function(event) {
-            if (this.tooltip) {
-              this.tooltip.style.left = (event.pageX + 10) + 'px';
-              this.tooltip.style.top = (event.pageY + 10) + 'px';
-            }
-          })
-          .on('mouseleave', function() {
-            d3.select(this).style('filter', 'brightness(1)');
-            if (this.tooltip) {
-              this.tooltip.remove();
-              this.tooltip = null;
-            }
-          })
-          .on('click', function(event, d) {
-            document.getElementById('estado').value = d.properties.uf;
-            buscarEmpresas();
-          });
-
-        // Adicionar labels
-        svg.selectAll('.label')
-          .data(geojson.features)
-          .enter()
-          .append('text')
-          .attr('class', 'label')
-          .attr('x', d => path.centroid(d)[0])
-          .attr('y', d => path.centroid(d)[1])
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'middle')
-          .text(d => d.properties.uf)
-          .style('font-weight', 'bold')
-          .style('fill', '#374151')
-          .style('font-size', '12px');
-      };
-
-      renderMap(geojson);
+      svg.selectAll('.label')
+        .data(geojson.features)
+        .enter()
+        .append('text')
+        .attr('x', d => path.centroid(d)[0])
+        .attr('y', d => path.centroid(d)[1])
+        .text(d => d.properties.uf);
     }
 
-    // Executar ao carregar
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        inicializarMapa();
-        document.getElementById('estado').value = 'SP';
-      }, 100);
-    });
+    function buscarEmpresas() {
+      const estado = document.getElementById('estado').value;
+      const municipio = document.getElementById('municipio').value;
+      const cnae = document.getElementById('cnae').value;
+      const limit = document.getElementById('limit').value;
 
-    document.getElementById('cnae').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') buscarEmpresas();
-    });
+      const params = new URLSearchParams({ estado, municipio, cnae, limit });
+      fetch(`/api/empresas?${params}`)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('showing2').textContent = data.data?.length || 0;
+          document.getElementById('total2').textContent = data.total || 0;
+          document.getElementById('results-container').innerHTML = `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
+        })
+        .catch(e => console.error(e));
+    }
+
+    function limparFiltros() {
+      document.getElementById('estado').value = '';
+      document.getElementById('municipio').value = '';
+      document.getElementById('cnae').value = '';
+      document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Preencha os filtros</p></div>';
+    }
+
+    setTimeout(() => inicializarMapa(), 100);
   </script>
 </body>
 </html>
