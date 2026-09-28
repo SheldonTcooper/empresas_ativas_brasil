@@ -825,11 +825,18 @@
       };
 
       const renderMap = function(geojson) {
+        console.log('🗺️ Renderizando mapa com', geojson.features.length, 'estados');
+        console.log('Dimensões SVG:', width, 'x', height);
+        console.log('Primeiro estado:', geojson.features[0]);
+
         // Projeção Mercator para Brasil
         const projection = d3.geoMercator()
           .fitSize([width, height], geojson);
 
         const path = d3.geoPath().projection(projection);
+
+        console.log('Primeiro path:', path(geojson.features[0].geometry));
+        console.log('Projeção center:', projection.translate());
 
         const colorScale = d3.scaleLinear()
           .domain([0, 1])
