@@ -771,77 +771,119 @@
       document.getElementById('total').textContent = '0';
     }
 
+    // Dados de densidade por estado
+    const densidadeEstados = {
+      'SP': 0.9, 'RJ': 0.8, 'MG': 0.7, 'BA': 0.6, 'SC': 0.6, 'RS': 0.6,
+      'PA': 0.4, 'PR': 0.7, 'GO': 0.5, 'DF': 0.5, 'PE': 0.5, 'CE': 0.5,
+      'ES': 0.5, 'MA': 0.3, 'PB': 0.4, 'MT': 0.3, 'MS': 0.4, 'PI': 0.3,
+      'RN': 0.3, 'AL': 0.3, 'SE': 0.2, 'RO': 0.2, 'AC': 0.1, 'AM': 0.2,
+      'RR': 0.1, 'AP': 0.1, 'TO': 0.2
+    };
+
     // Inicializar mapa
     function inicializarMapa() {
-      const width = document.getElementById('map').offsetWidth;
+      const container = document.getElementById('map');
+      const width = container.offsetWidth;
       const height = 500;
 
       const svg = d3.select('#map').append('svg')
         .attr('width', width)
         .attr('height', height);
 
-      // Simulação de dados do mapa - em produção seria um arquivo GeoJSON real
-      const estadosFormas = [
-        { id: 'SP', nome: 'São Paulo', density: 0.9 },
-        { id: 'RJ', nome: 'Rio de Janeiro', density: 0.8 },
-        { id: 'MG', nome: 'Minas Gerais', density: 0.7 },
-        { id: 'BA', nome: 'Bahia', density: 0.6 },
-        { id: 'SC', nome: 'Santa Catarina', density: 0.6 },
-        { id: 'RS', nome: 'Rio Grande do Sul', density: 0.6 },
-        { id: 'PA', nome: 'Pará', density: 0.4 },
-        { id: 'PR', nome: 'Paraná', density: 0.7 },
-        { id: 'GO', nome: 'Goiás', density: 0.5 },
-        { id: 'DF', nome: 'Distrito Federal', density: 0.5 },
-        { id: 'PE', nome: 'Pernambuco', density: 0.5 },
-        { id: 'CE', nome: 'Ceará', density: 0.5 },
-        { id: 'ES', nome: 'Espírito Santo', density: 0.5 },
-        { id: 'MA', nome: 'Maranhão', density: 0.3 },
-        { id: 'PB', nome: 'Paraíba', density: 0.4 },
-        { id: 'MT', nome: 'Mato Grosso', density: 0.3 },
-        { id: 'MS', nome: 'Mato Grosso do Sul', density: 0.4 },
-        { id: 'PI', nome: 'Piauí', density: 0.3 },
-        { id: 'RN', nome: 'Rio Grande do Norte', density: 0.3 },
-        { id: 'AL', nome: 'Alagoas', density: 0.3 },
-        { id: 'SE', nome: 'Sergipe', density: 0.2 },
-        { id: 'RO', nome: 'Rondônia', density: 0.2 },
-        { id: 'AC', nome: 'Acre', density: 0.1 },
-        { id: 'AM', nome: 'Amazonas', density: 0.2 },
-        { id: 'RR', nome: 'Roraima', density: 0.1 },
-        { id: 'AP', nome: 'Amapá', density: 0.1 },
-        { id: 'TO', nome: 'Tocantins', density: 0.2 }
-      ];
+      // Carregar GeoJSON e renderizar
+      d3.json('/brasil.geojson').then(geojson => {
+        // Projeção e path generator
+        const projection = d3.geoMercator()
+          .fitSize([width, height], geojson);
 
-      const colorScale = d3.scaleLinear()
-        .domain([0, 1])
-        .range(['#b3d9ff', '#2952a3']);
+        const path = d3.geoPath().projection(projection);
 
-      // Mensagem informativa
-      svg.append('text')
-        .attr('x', width / 2)
-        .attr('y', height / 2)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('font-size', '14px')
-        .attr('fill', '#999')
-        .text('Mapa Choropleth - GeoJSON em produção');
+        const colorScale = d3.scaleLinear()
+          .domain([0, 1])
+          .range(['#b3d9ff', '#2952a3']);
 
-      // Mostrar legenda de dados
-      let yPos = 20;
-      estadosFormas.slice(0, 5).forEach(est => {
-        svg.append('rect')
-          .attr('x', 20)
-          .attr('y', yPos)
-          .attr('width', 20)
-          .attr('height', 20)
-          .style('fill', colorScale(est.density));
+        // Desenhar estados
+        svg.selectAll('.estado')
+          .data(geojson.features)
+          .enter()
+          .append('path')
+          .attr('class', 'estado')
+          .attr('d', path)
+          .style('fill', d => {
+            const density = densidadeEstados[d.properties.uf] || 0.3;
+            return colorScale(density);
+          })
+          .style('stroke', '#fff')
+          .style('stroke-width', 1.5)
+          .style('cursor', 'pointer')
+          .on('mouseenter', function(event, d) {
+            d3.select(this)
+              .style('stroke-width', 2.5)
+              .style('filter', 'brightness(1.2)');
 
+            // Mostrar tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'map-tooltip';
+            tooltip.textContent = `${d.properties.name} (${d.properties.uf})`;
+            tooltip.style.cssText = `
+              position: fixed;
+              background: rgba(0,0,0,0.8);
+              color: white;
+              padding: 8px 12px;
+              border-radius: 4px;
+              font-size: 12px;
+              left: ${event.pageX + 10}px;
+              top: ${event.pageY + 10}px;
+              pointer-events: none;
+              z-index: 10000;
+            `;
+            document.body.appendChild(tooltip);
+            this.tooltip = tooltip;
+          })
+          .on('mousemove', function(event) {
+            if (this.tooltip) {
+              this.tooltip.style.left = (event.pageX + 10) + 'px';
+              this.tooltip.style.top = (event.pageY + 10) + 'px';
+            }
+          })
+          .on('mouseleave', function() {
+            d3.select(this)
+              .style('stroke-width', 1.5)
+              .style('filter', 'brightness(1)');
+            if (this.tooltip) {
+              this.tooltip.remove();
+              this.tooltip = null;
+            }
+          })
+          .on('click', function(event, d) {
+            document.getElementById('estado').value = d.properties.uf;
+            document.getElementById('municipio').value = d.properties.name;
+            alert(`Selecione um CNAE e clique em Buscar para ver empresas em ${d.properties.name}`);
+          });
+
+        // Adicionar labels
+        svg.selectAll('.label')
+          .data(geojson.features)
+          .enter()
+          .append('text')
+          .attr('class', 'label')
+          .attr('x', d => path.centroid(d)[0])
+          .attr('y', d => path.centroid(d)[1])
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
+          .attr('fill', '#fff')
+          .attr('pointer-events', 'none')
+          .attr('text-shadow', '1px 1px 1px rgba(0,0,0,0.8)')
+          .text(d => d.properties.uf);
+      }).catch(err => {
+        console.error('Erro ao carregar mapa:', err);
         svg.append('text')
-          .attr('x', 50)
-          .attr('y', yPos + 15)
-          .attr('font-size', '12px')
-          .text(`${est.nome}: ${Math.round(est.density * 100)}%`);
-
-        yPos += 25;
+          .attr('x', width / 2)
+          .attr('y', height / 2)
+          .attr('text-anchor', 'middle')
+          .text('Erro ao carregar mapa');
       });
     }
 
