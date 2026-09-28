@@ -404,37 +404,29 @@ async function carregarMapaEstado(uf){
   }
 
   loading.style.display='none';
-  mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([-14.8,-51.5],5);
+  mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([-15,-51],6);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
+    attribution: '© OpenStreetMap',
     maxZoom: 19
   }).addTo(mapEstado);
 
-  const totalEstado = estadosInfo[uf].empresas;
-  const n = geojson.features.length;
-  // distribui pseudo-aleatoriamente o total do estado entre municípios (maior peso pro maior nome/1o da lista = capital)
+  // Cria marcadores para cada município
   geojson.features.forEach((f,i)=>{
-    const peso = i===0 ? 0.18 : Math.random();
-    f.properties._empresas = Math.max(80, Math.round((totalEstado*peso)/(n*0.6)));
+    const nome = f.properties.nome;
+    const marker = L.circleMarker([-15 + Math.random()*3, -51 + Math.random()*3], {
+      radius: 8,
+      fillColor: '#60a5fa',
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8
+    }).addTo(mapEstado);
+
+    marker.bindPopup(`<b>${nome}</b>`);
+    marker.on('click', () => selecionarMunicipio(nome));
   });
 
-  geoLayerEstado = L.geoJSON(geojson,{
-    style: feature=>({
-      fillColor: corPorDensidade(feature.properties._empresas*6),
-      fillOpacity:0.85, color:'#0a0e27', weight:1
-    }),
-    onEachFeature:(feature,layer)=>{
-      const nome = feature.properties.nome;
-      const emp = feature.properties._empresas;
-      layer.bindTooltip(`<b>${nome}</b><br>${emp.toLocaleString('pt-BR')} empresas ativas`, {className:'mun-tooltip', sticky:true});
-      layer.on('mouseover', function(){ this.setStyle({fillOpacity:1, weight:2.2, color:'#93C5FD'}); });
-      layer.on('mouseout', function(){ this.setStyle({fillOpacity:0.85, weight:1, color:'#0a0e27'}); });
-      layer.on('click', ()=> selecionarMunicipio(nome));
-    }
-  }).addTo(mapEstado);
-
-  try{ mapEstado.fitBounds(geoLayerEstado.getBounds(), {padding:[20,20]}); }catch(e){}
   setTimeout(()=>{ if(mapEstado) mapEstado.invalidateSize(); }, 150);
 }
 
