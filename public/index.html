@@ -325,27 +325,41 @@ function exportarCSV() {
 }
 
 function inicializarMapa() {
-  const map = L.map('map').setView([-15.47, -51.93], 4);
+  const map = L.map('map', {
+    center: [-15.47, -51.93],
+    zoom: 4,
+    zoomControl: true,
+    attributionControl: true
+  });
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
   }).addTo(map);
 
   Object.entries(ESTADOS).forEach(([uf, data]) => {
     const marker = L.circleMarker(data.coords, {
-      radius: 20,
+      radius: 12,
       fillColor: '#60a5fa',
       color: '#fff',
       weight: 2,
       opacity: 1,
-      fillOpacity: 0.8
-    }).addTo(map);
+      fillOpacity: 0.85
+    });
 
-    marker.bindPopup(data.name);
-    marker.on('click', () => selectEstado(uf));
+    marker.addTo(map);
+    marker.bindPopup(`<strong>${data.name}</strong><br>(Clique para explorar)`);
+    marker.on('click', function() {
+      selectEstado(uf);
+    });
   });
 }
 
-document.addEventListener('DOMContentLoaded', inicializarMapa);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', inicializarMapa);
+} else {
+  inicializarMapa();
+}
 </script>
 </body>
 </html>
