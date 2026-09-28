@@ -21,7 +21,7 @@ function fmtCNPJStr(s) {
 
 async function fetchBrasilio(municipioNome, cnae, page, limit) {
   const nome = normNome(municipioNome);
-  const url  = `https://brasil.io/api/dataset/socios-brasil/empresas/data/?cnae_fiscal=${encodeURIComponent(cnae)}&municipio=${encodeURIComponent(nome)}&situacao_cadastral=ATIVA&page=${page}&page_size=${limit}`;
+  const url  = `https://brasil.io/api/v1/dataset/socios-brasil/empresas/data/?cnae_fiscal=${encodeURIComponent(cnae)}&municipio=${encodeURIComponent(nome)}&situacao_cadastral=ATIVA&page=${page}&page_size=${limit}`;
   const headers = {
     'User-Agent': 'empresas-ativas-brasil/1.0 (prospeccao)',
     'Accept': 'application/json',
