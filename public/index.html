@@ -8,33 +8,14 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    :root {
-      --primary: #667eea;
-      --primary-dark: #5568d3;
-      --gray-50: #f9fafb;
-      --gray-100: #f3f4f6;
-      --gray-200: #e5e7eb;
-      --gray-300: #d1d5db;
-      --gray-700: #374151;
-      --gray-800: #1f2937;
-      --gray-900: #111827;
-      --blue-50: #eff6ff;
-      --success: #10b981;
-    }
-
-    html, body {
-      height: 100%;
-    }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--gray-50);
-      color: var(--gray-900);
-      line-height: 1.6;
+      background: #f9fafb;
+      color: #111827;
     }
 
     header {
-      background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 20px 0;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -52,76 +33,52 @@
     .logo {
       font-size: 28px;
       font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .header-stats {
-      display: flex;
-      gap: 40px;
-    }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      text-align: right;
-    }
-
-    .stat-label {
-      font-size: 12px;
-      opacity: 0.9;
-      font-weight: 500;
-    }
-
-    .stat-value {
-      font-size: 18px;
-      font-weight: 700;
     }
 
     .container {
       max-width: 1400px;
       margin: 0 auto;
-      padding: 30px 20px;
+      padding: 40px 20px;
     }
 
-    .main-layout {
-      display: grid;
-      grid-template-columns: 2fr 1.2fr;
-      gap: 30px;
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .breadcrumb {
       margin-bottom: 30px;
+      font-size: 14px;
+      color: #6b7280;
     }
 
-    .panel {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border: 1px solid var(--gray-200);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+    .breadcrumb button {
+      background: none;
+      border: none;
+      color: #667eea;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 14px;
+      padding: 0 4px;
     }
 
-    .panel-header {
-      background: var(--gray-50);
-      border-bottom: 1px solid var(--gray-200);
-      padding: 16px 24px;
-      font-weight: 600;
-      font-size: 15px;
-      color: var(--gray-900);
+    .breadcrumb button:hover {
+      color: #5568d3;
     }
 
-    .panel-body {
-      padding: 24px;
-      flex: 1;
-      overflow-y: auto;
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 30px;
+      color: #111827;
     }
 
+    /* PÁGINA 1: MAPA */
     .map-container {
       width: 100%;
-      height: 500px;
-      background: var(--blue-50);
-      border-radius: 8px;
-      margin-bottom: 20px;
+      height: 600px;
+      background: #eff6ff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
     }
 
     .map-container svg {
@@ -151,23 +108,20 @@
       dominant-baseline: central;
     }
 
-    .map-legend {
-      padding: 16px;
-      background: var(--gray-100);
+    .legend {
+      background: white;
+      padding: 20px;
       border-radius: 8px;
-      font-size: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-top: 20px;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      padding: 4px 0;
-    }
-
-    .legend-item:last-child {
-      margin-bottom: 0;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
     }
 
     .legend-color {
@@ -177,183 +131,134 @@
       border: 1px solid rgba(0,0,0,0.1);
     }
 
-    .legend-label {
-      font-size: 12px;
-      color: var(--gray-700);
-    }
-
-    .filters {
+    /* PÁGINA 2 e 3: LISTAS */
+    .list-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
     }
 
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .filter-group label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--gray-700);
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    .filter-group input,
-    .filter-group select {
-      padding: 10px 12px;
-      border: 1px solid var(--gray-300);
-      border-radius: 6px;
-      font-size: 13px;
-      font-family: inherit;
+    .list-item {
       background: white;
-      color: var(--gray-900);
-    }
-
-    .filter-group input:focus,
-    .filter-group select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-      margin-bottom: 16px;
-    }
-
-    button {
-      flex: 1;
-      padding: 11px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
       cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
       transition: all 0.2s ease;
+      text-align: center;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: white;
+    .list-item:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      transform: translateY(-2px);
     }
 
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    .list-item-name {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
     }
 
-    .btn-secondary {
-      background: var(--gray-200);
-      color: var(--gray-800);
-    }
-
-    .btn-secondary:hover {
-      background: var(--gray-300);
-    }
-
-    .tip {
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      padding: 12px 14px;
-      border-radius: 4px;
+    .list-item-count {
       font-size: 12px;
-      color: #92400e;
-      line-height: 1.5;
+      color: #6b7280;
     }
 
-    .results-section {
-      grid-column: 1 / -1;
-    }
-
-    .results-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .results-info {
-      font-size: 12px;
-      color: var(--gray-600);
-      margin-left: 20px;
-    }
-
-    .results-container {
-      padding: 24px;
-      min-height: 200px;
+    /* PÁGINA 4: TABELA */
+    .table-wrapper {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
+      font-size: 13px;
     }
 
     thead {
-      background: var(--gray-50);
-      border-bottom: 2px solid var(--gray-200);
-      position: sticky;
-      top: 0;
+      background: #f3f4f6;
+      border-bottom: 2px solid #e5e7eb;
     }
 
     th {
-      padding: 12px 16px;
+      padding: 16px;
       text-align: left;
       font-weight: 600;
-      color: var(--gray-700);
+      color: #374151;
       text-transform: uppercase;
       font-size: 11px;
       letter-spacing: 0.3px;
     }
 
     td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--gray-200);
-      color: var(--gray-800);
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
     }
 
     tbody tr:hover {
-      background: var(--gray-50);
+      background: #f9fafb;
+    }
+
+    /* BOTÕES */
+    .btn {
+      display: inline-block;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+
+    .btn-back {
+      background: #e5e7eb;
+      color: #374151;
+      margin-bottom: 20px;
+    }
+
+    .btn-back:hover {
+      background: #d1d5db;
     }
 
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      color: var(--gray-600);
+      color: #6b7280;
     }
 
     .empty-icon {
-      font-size: 40px;
+      font-size: 48px;
       margin-bottom: 12px;
       opacity: 0.5;
     }
 
-    @media (max-width: 1024px) {
-      .main-layout {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .header-stats {
-        flex-direction: column;
-        gap: 12px;
+    @media (max-width: 768px) {
+      .list-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       }
 
-      .stat-item {
-        text-align: left;
+      h1 {
+        font-size: 24px;
       }
 
-      .logo {
-        font-size: 20px;
+      .map-container {
+        height: 400px;
       }
     }
   </style>
@@ -362,113 +267,54 @@
   <header>
     <div class="header-content">
       <div class="logo">🏢 Empresas Ativas Brasil</div>
-      <div class="header-stats">
-        <div class="stat-item">
-          <div class="stat-label">Total de Empresas</div>
-          <div class="stat-value"><span id="total">45.1M</span>+</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Resultados</div>
-          <div class="stat-value"><span id="showing">0</span></div>
-        </div>
-      </div>
     </div>
   </header>
 
   <div class="container">
-    <div class="main-layout">
-      <!-- ESQUERDA: MAPA -->
-      <div class="panel">
-        <div class="panel-header">📍 Mapa do Brasil - Densidade de Empresas</div>
-        <div class="panel-body">
-          <div class="map-container" id="map"></div>
-
-          <div class="map-legend">
-            <div style="font-weight: 600; margin-bottom: 10px; color: var(--gray-900);">Densidade por Estado:</div>
-            <div class="legend-item">
-              <div class="legend-color" style="background: #b3d9ff;"></div>
-              <div class="legend-label">Baixa (0-1M)</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color" style="background: #60a5fa;"></div>
-              <div class="legend-label">Média (1M-2M)</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color" style="background: #2952a3;"></div>
-              <div class="legend-label">Alta (2M+)</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- DIREITA: FILTROS -->
-      <div class="panel">
-        <div class="panel-header">🔍 Filtros de Busca</div>
-        <div class="panel-body">
-          <div class="filters">
-            <div class="filter-group">
-              <label for="estado">Estado (UF)</label>
-              <select id="estado">
-                <option value="">Selecione...</option>
-                <option value="SP">São Paulo</option>
-                <option value="RJ">Rio de Janeiro</option>
-                <option value="MG">Minas Gerais</option>
-                <option value="BA">Bahia</option>
-                <option value="PR">Paraná</option>
-                <option value="SC">Santa Catarina</option>
-                <option value="RS">Rio Grande do Sul</option>
-                <option value="PE">Pernambuco</option>
-                <option value="CE">Ceará</option>
-                <option value="PA">Pará</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label for="municipio">Município</label>
-              <input type="text" id="municipio" placeholder="Ex: São Paulo...">
-            </div>
-
-            <div class="filter-group">
-              <label for="cnae">CNAE (Atividade)</label>
-              <input type="text" id="cnae" placeholder="Ex: 4711301">
-            </div>
-
-            <div class="filter-group">
-              <label for="limit">Limite de Resultados</label>
-              <select id="limit">
-                <option value="10">10 resultados</option>
-                <option value="25" selected>25 resultados</option>
-                <option value="50">50 resultados</option>
-                <option value="100">100 resultados</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="button-group">
-            <button class="btn-primary" onclick="buscarEmpresas()">🔍 Buscar</button>
-            <button class="btn-secondary" onclick="limparFiltros()">Limpar</button>
-          </div>
-
-          <div class="tip">
-            <strong>💡 Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima e clique em Buscar.
-          </div>
+    <!-- PÁGINA 1: MAPA DO BRASIL -->
+    <div id="page-map" class="page active">
+      <h1>Selecione um Estado</h1>
+      <div class="map-container" id="map"></div>
+      <div class="legend">
+        <div style="font-weight: 600; margin-bottom: 12px;">Clique no estado para ver as cidades</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #b3d9ff;"></div>
+          <div>Estados com dados disponíveis</div>
         </div>
       </div>
     </div>
 
-    <!-- RESULTADOS -->
-    <div class="panel results-section">
-      <div class="panel-header">
-        <div class="results-header">
-          <span>📊 Resultados da Busca</span>
-          <span class="results-info">Mostrando <strong id="count-results">0</strong> de <strong id="count-total">0</strong></span>
-        </div>
-      </div>
-      <div class="results-container" id="results-container">
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
-        </div>
+    <!-- PÁGINA 2: CIDADES -->
+    <div id="page-cities" class="page">
+      <button class="btn btn-back" onclick="goToMap()">← Voltar para Estados</button>
+      <h1 id="cities-title">Cidades de [Estado]</h1>
+      <div id="cities-grid" class="list-grid"></div>
+    </div>
+
+    <!-- PÁGINA 3: CNAES -->
+    <div id="page-cnaes" class="page">
+      <button class="btn btn-back" onclick="goToCities()">← Voltar para Cidades</button>
+      <h1 id="cnaes-title">Atividades (CNAEs) em [Cidade]</h1>
+      <div id="cnaes-grid" class="list-grid"></div>
+    </div>
+
+    <!-- PÁGINA 4: EMPRESAS -->
+    <div id="page-companies" class="page">
+      <button class="btn btn-back" onclick="goToCnaes()">← Voltar para Atividades</button>
+      <h1 id="companies-title">Empresas em [Cidade] - [CNAE]</h1>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>CNPJ</th>
+              <th>Razão Social</th>
+              <th>Telefone</th>
+              <th>Email</th>
+              <th>Endereço</th>
+            </tr>
+          </thead>
+          <tbody id="companies-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -515,6 +361,18 @@
       ]
     };
 
+    let state = {
+      selectedEstado: null,
+      selectedCity: null,
+      selectedCnae: null
+    };
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
     function renderMap() {
       const container = document.getElementById('map');
       const width = container.offsetWidth;
@@ -524,35 +382,23 @@
       const svg = d3.select('#map')
         .append('svg')
         .attr('width', width)
-        .attr('height', height)
-        .attr('viewBox', `0 0 ${width} ${height}`)
-        .attr('preserveAspectRatio', 'xMidYMid meet');
+        .attr('height', height);
 
       const projection = d3.geoMercator().fitSize([width, height], BRASIL_GEOJSON);
       const path = d3.geoPath().projection(projection);
-      const colorScale = d3.scaleLinear()
-        .domain([0, 1])
-        .range(['#b3d9ff', '#2952a3']);
+      const colorScale = d3.scaleLinear().domain([0, 1]).range(['#b3d9ff', '#2952a3']);
 
-      // Desenhar estados
       svg.selectAll('.estado')
-        .data(BRASIL_GEOJSON.features, d => d.properties.uf)
+        .data(BRASIL_GEOJSON.features)
         .enter()
         .append('path')
         .attr('class', 'estado')
         .attr('d', path)
-        .style('fill', d => {
-          const density = DENSITY_MAP[d.properties.uf] || 0.3;
-          return colorScale(density);
-        })
-        .on('click', function(event, d) {
-          document.getElementById('estado').value = d.properties.uf;
-          buscarEmpresas();
-        });
+        .style('fill', d => colorScale(DENSITY_MAP[d.properties.uf] || 0.3))
+        .on('click', (event, d) => selectEstado(d));
 
-      // Desenhar labels
       svg.selectAll('.estado-label')
-        .data(BRASIL_GEOJSON.features, d => d.properties.uf)
+        .data(BRASIL_GEOJSON.features)
         .enter()
         .append('text')
         .attr('class', 'estado-label')
@@ -561,52 +407,84 @@
         .text(d => d.properties.uf);
     }
 
-    function buscarEmpresas() {
-      const estado = document.getElementById('estado').value || '';
-      const municipio = document.getElementById('municipio').value || '';
-      const cnae = document.getElementById('cnae').value || '';
-      const limit = document.getElementById('limit').value || '25';
+    function selectEstado(feature) {
+      state.selectedEstado = feature.properties.uf;
+      document.getElementById('cities-title').textContent = `Cidades de ${feature.properties.name}`;
+      loadCities(feature.properties.uf);
+      showPage('page-cities');
+    }
 
-      const params = new URLSearchParams({ estado, municipio, cnae, limit });
+    function loadCities(uf) {
+      const cities = ['São Paulo', 'Rio de Janeiro', 'Campinas', 'Santos', 'Sorocaba'];
+      const grid = document.getElementById('cities-grid');
+      grid.innerHTML = cities.map(city => `
+        <div class="list-item" onclick="selectCity('${city}')">
+          <div class="list-item-name">${city}</div>
+          <div class="list-item-count">125 empresas</div>
+        </div>
+      `).join('');
+    }
 
-      document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Carregando...</p></div>';
+    function selectCity(city) {
+      state.selectedCity = city;
+      document.getElementById('cnaes-title').textContent = `Atividades (CNAEs) em ${city}`;
+      loadCnaes(state.selectedEstado, city);
+      showPage('page-cnaes');
+    }
 
+    function loadCnaes(uf, city) {
+      const cnaes = [
+        { code: '4711301', name: 'Comércio Varejista' },
+        { code: '4721102', name: 'Comércio Atacadista' },
+        { code: '4799008', name: 'Transporte de Carga' }
+      ];
+      const grid = document.getElementById('cnaes-grid');
+      grid.innerHTML = cnaes.map(cnae => `
+        <div class="list-item" onclick="selectCnae('${cnae.code}', '${cnae.name}')">
+          <div class="list-item-name">${cnae.code}</div>
+          <div class="list-item-count">${cnae.name}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectCnae(code, name) {
+      state.selectedCnae = code;
+      document.getElementById('companies-title').textContent = `Empresas em ${state.selectedCity} - ${name}`;
+      loadCompanies(state.selectedEstado, state.selectedCity, code);
+      showPage('page-companies');
+    }
+
+    function loadCompanies(uf, city, cnae) {
+      const params = new URLSearchParams({ estado: uf, municipio: city, cnae, limit: '100' });
       fetch(`/api/empresas?${params}`)
         .then(r => r.json())
         .then(data => {
-          const items = data.data || [];
-          document.getElementById('count-results').textContent = items.length;
-          document.getElementById('count-total').textContent = data.total || 0;
-
-          if (items.length > 0) {
-            const html = `<table><thead><tr><th>CNPJ</th><th>Razão Social</th><th>Tipo</th><th>Telefone</th></tr></thead><tbody>${items.map(e => `<tr><td>${e.cnpj || '—'}</td><td>${e.razao || '—'}</td><td>${e.tipo || '—'}</td><td>${e.tel1 || '—'}</td></tr>`).join('')}</tbody></table>`;
-            document.getElementById('results-container').innerHTML = html;
+          const tbody = document.getElementById('companies-tbody');
+          if (data.data && data.data.length > 0) {
+            tbody.innerHTML = data.data.map(e => `
+              <tr>
+                <td>${e.cnpj || '—'}</td>
+                <td>${e.razao || '—'}</td>
+                <td>${e.tel1 || '—'}</td>
+                <td>${e.email || '—'}</td>
+                <td>${e.logr || '—'}</td>
+              </tr>
+            `).join('');
           } else {
-            document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>Nenhuma empresa encontrada</p></div>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhuma empresa encontrada</td></tr>';
           }
         })
         .catch(e => {
-          console.error(e);
-          document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Erro ao carregar dados</p></div>';
+          document.getElementById('companies-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #d32f2f;">Erro ao carregar dados</td></tr>';
         });
     }
 
-    function limparFiltros() {
-      document.getElementById('estado').value = '';
-      document.getElementById('municipio').value = '';
-      document.getElementById('cnae').value = '';
-      document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>Preencha os filtros e clique em "Buscar"</p></div>';
-      document.getElementById('count-results').textContent = '0';
-      document.getElementById('count-total').textContent = '0';
-    }
+    function goToMap() { showPage('page-map'); }
+    function goToCities() { showPage('page-cities'); }
+    function goToCnaes() { showPage('page-cnaes'); }
 
-    // Inicializar ao carregar
+    // Inicializar
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(renderMap, 50);
-    });
-
-    // Redenizar se redimensionar
-    window.addEventListener('resize', () => {
       setTimeout(renderMap, 100);
     });
   </script>
