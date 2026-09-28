@@ -181,13 +181,14 @@ router.get('/cidades', async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(`
-      SELECT DISTINCT m.descricao AS municipio, m.codigo
-      FROM municipio m
-      WHERE m.uf = $1
-      ORDER BY m.descricao
+      SELECT DISTINCT est.municipio AS codigo, COALESCE(m.descricao, est.municipio::text) AS municipio
+      FROM estabelecimento est
+      LEFT JOIN municipio m ON m.codigo = est.municipio
+      WHERE est.uf = $1 AND est.situacao_cadastral = '02'
+      ORDER BY municipio
     `, [estado]);
 
-    res.json(rows.map(r => ({ municipio: r.descricao, codigo: r.codigo })));
+    res.json(rows.map(r => ({ municipio: r.municipio, codigo: r.codigo })));
   } catch (err) {
     next(err);
   }
