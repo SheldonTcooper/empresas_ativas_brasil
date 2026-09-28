@@ -844,8 +844,10 @@
 
     // Executar ao carregar
     document.addEventListener('DOMContentLoaded', () => {
-      inicializarMapa();
-      document.getElementById('estado').value = 'SP';
+      setTimeout(() => {
+        inicializarMapa();
+        document.getElementById('estado').value = 'SP';
+      }, 100);
     });
 
     document.getElementById('cnae').addEventListener('keypress', (e) => {
