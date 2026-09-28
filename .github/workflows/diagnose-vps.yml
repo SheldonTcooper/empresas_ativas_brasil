@@ -1,0 +1,57 @@
+name: Diagnosticar VPS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      SSH_OPTS: "-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=5 -i /tmp/vps_key"
+      VPS: "root@${{ secrets.VPS_HOST }}"
+
+    steps:
+      - name: Configurar SSH
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > /tmp/vps_key
+          chmod 600 /tmp/vps_key
+
+      - name: ✅ Testar conexão SSH
+        run: |
+          ssh $SSH_OPTS $VPS "echo 'Conexão SSH OK'"
+
+      - name: 🔍 Verificar processos Node.js/PM2
+        run: |
+          ssh $SSH_OPTS $VPS "ps aux | grep -E 'node|pm2' | grep -v grep || echo '❌ Nenhum processo Node.js encontrado'"
+
+      - name: 🔍 Verificar Docker
+        run: |
+          ssh $SSH_OPTS $VPS "docker ps || echo '❌ Docker não está rodando'"
+
+      - name: 🔍 Verificar logs do PM2
+        run: |
+          ssh $SSH_OPTS $VPS "pm2 logs empresas-api --lines 30 2>&1 || echo '❌ PM2 não está rodando'"
+
+      - name: 🔍 Verificar porta 3002
+        run: |
+          ssh $SSH_OPTS $VPS "netstat -tuln | grep 3002 || ss -tuln | grep 3002 || echo '❌ Porta 3002 não está escutando'"
+
+      - name: 🔍 Verificar porta 8081 (Traefik)
+        run: |
+          ssh $SSH_OPTS $VPS "netstat -tuln | grep 8081 || ss -tuln | grep 8081 || echo '❌ Porta 8081 não está escutando'"
+
+      - name: 🔍 Status geral
+        run: |
+          ssh $SSH_OPTS $VPS "uptime && echo '---' && df -h /var/www && echo '---' && free -h"
+
+      - name: 🔄 Tentar reiniciar PM2
+        if: always()
+        run: |
+          ssh $SSH_OPTS $VPS "cd /var/www/empresas_ativas_brasil && pm2 restart empresas-api --update-env 2>&1 || echo '⚠️ Erro ao reiniciar'"
+
+      - name: ✅ Verificar status após reiniciar
+        if: always()
+        run: |
+          ssh $SSH_OPTS $VPS "pm2 status 2>&1 || echo 'PM2 status indisponível'"
