@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empresas Ativas Brasil - Prospeccão de Empresas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5568d3;
+      --primary-light: #8b9dff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --blue-50: #eff6ff;
+      --blue-100: #dbeafe;
+      --blue-200: #bfdbfe;
+      --blue-400: #60a5fa;
+      --blue-600: #2563eb;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 30px;
+      font-size: 14px;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      opacity: 0.9;
+    }
+
+    .stat-value {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 16px 24px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 24px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select {
+      padding: 10px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--gray-200);
+      color: var(--gray-800);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-300);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    #map {
+      width: 100%;
+      height: 500px;
+      background: var(--blue-50);
+      border-radius: 8px;
+    }
+
+    .map-legend {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--gray-100);
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+
+    .results-section {
+      grid-column: 1 / -1;
+    }
+
+    .table-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .results-info {
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead {
+      background: var(--gray-50);
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    tbody tr:hover {
+      background: var(--gray-50);
+    }
+
+    .company-name {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .cnpj {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--gray-600);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-matriz {
+      background: var(--success);
+      color: white;
+    }
+
+    .badge-filial {
+      background: var(--blue-100);
+      color: var(--blue-600);
+    }
+
+    .links {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--gray-100);
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 12px;
+      transition: all 0.2s;
+      border: 1px solid var(--gray-200);
+    }
+
+    .link-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray-600);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray-500);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .header-stats {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 16px;
+      }
+
+      .layout {
+        gap: 16px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 8px;
+      }
+
+      .table-controls {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .tooltip {
+      position: relative;
+      cursor: help;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gray-900);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">🏢 Empresas Ativas Brasil</div>
+      <div class="header-stats">
+        <div class="stat-item">
+          <span class="stat-label">Total de Empresas</span>
+          <span class="stat-value" id="total-companies">45.1M+</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Resultados</span>
+          <span class="stat-value" id="results-count">0</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="layout">
+      <!-- Mapa e Filtros -->
+      <div class="panel">
+        <div class="panel-header">
+          📍 Mapa do Brasil - Densidade de Empresas
+        </div>
+        <div class="panel-body">
+          <div id="map"></div>
+          <div class="map-legend">
+            <strong>Densidade:</strong>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #b3d9ff;"></div>
+              <span>Baixa (0-1M)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #668fdd;"></div>
+              <span>Média (1M-2M)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: #2952a3;"></div>
+              <span>Alta (2M+)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="panel">
+        <div class="panel-header">
+          🔍 Filtros de Busca
+        </div>
+        <div class="panel-body">
+          <div class="filters">
+            <div class="filter-group">
+              <label for="estado">Estado (UF)</label>
+              <select id="estado">
+                <option value="">Selecione um estado...</option>
+                <option value="AC">Acre (AC)</option>
+                <option value="AL">Alagoas (AL)</option>
+                <option value="AP">Amapá (AP)</option>
+                <option value="AM">Amazonas (AM)</option>
+                <option value="BA">Bahia (BA)</option>
+                <option value="CE">Ceará (CE)</option>
+                <option value="DF">Distrito Federal (DF)</option>
+                <option value="ES">Espírito Santo (ES)</option>
+                <option value="GO">Goiás (GO)</option>
+                <option value="MA">Maranhão (MA)</option>
+                <option value="MT">Mato Grosso (MT)</option>
+                <option value="MS">Mato Grosso do Sul (MS)</option>
+                <option value="MG">Minas Gerais (MG)</option>
+                <option value="PA">Pará (PA)</option>
+                <option value="PB">Paraíba (PB)</option>
+                <option value="PR">Paraná (PR)</option>
+                <option value="PE">Pernambuco (PE)</option>
+                <option value="PI">Piauí (PI)</option>
+                <option value="RJ">Rio de Janeiro (RJ)</option>
+                <option value="RN">Rio Grande do Norte (RN)</option>
+                <option value="RS">Rio Grande do Sul (RS)</option>
+                <option value="RO">Rondônia (RO)</option>
+                <option value="RR">Roraima (RR)</option>
+                <option value="SC">Santa Catarina (SC)</option>
+                <option value="SP">São Paulo (SP)</option>
+                <option value="SE">Sergipe (SE)</option>
+                <option value="TO">Tocantins (TO)</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="municipio">Município</label>
+              <input type="text" id="municipio" placeholder="Ex: São Paulo...">
+            </div>
+
+            <div class="filter-group">
+              <label for="cnae">CNAE (Atividade)</label>
+              <input type="text" id="cnae" placeholder="Ex: 4711301 (Comércio Varejista)">
+            </div>
+
+            <div class="filter-group">
+              <label for="limit">Limite de Resultados</label>
+              <select id="limit">
+                <option value="10">10 resultados</option>
+                <option value="25" selected>25 resultados</option>
+                <option value="50">50 resultados</option>
+                <option value="100">100 resultados</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button class="btn-primary" onclick="buscarEmpresas()">🔍 Buscar</button>
+            <button class="btn-secondary" onclick="limparFiltros()">🔄 Limpar</button>
+          </div>
+
+          <div style="margin-top: 20px; padding: 16px; background: var(--blue-50); border-radius: 8px; font-size: 12px; color: var(--blue-600);">
+            <strong>💡 Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="panel results-section">
+      <div class="panel-header">
+        📊 Resultados da Busca
+        <div class="results-info" id="results-info"></div>
+      </div>
+      <div class="panel-body">
+        <div class="table-controls">
+          <span class="results-info">
+            Mostrando <strong id="showing">0</strong> de <strong id="total">0</strong> empresas
+          </span>
+          <div class="button-group">
+            <button class="btn-success" onclick="exportarCSV()" id="export-btn" style="display: none;">📥 Exportar CSV</button>
+          </div>
+        </div>
+
+        <div id="results-container">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3002';
+    let empresasData = [];
+    let estadoSelecionado = '';
+    let municipioSelecionado = '';
+
+    const estadosCNAE = {
+      'AC': { nome: 'Acre', codigo: 0 },
+      'AL': { nome: 'Alagoas', codigo: 0 },
+      'AP': { nome: 'Amapá', codigo: 0 },
+      'AM': { nome: 'Amazonas', codigo: 0 },
+      'BA': { nome: 'Bahia', codigo: 0 },
+      'CE': { nome: 'Ceará', codigo: 0 },
+      'DF': { nome: 'Distrito Federal', codigo: 0 },
+      'ES': { nome: 'Espírito Santo', codigo: 0 },
+      'GO': { nome: 'Goiás', codigo: 0 },
+      'MA': { nome: 'Maranhão', codigo: 0 },
+      'MT': { nome: 'Mato Grosso', codigo: 0 },
+      'MS': { nome: 'Mato Grosso do Sul', codigo: 0 },
+      'MG': { nome: 'Minas Gerais', codigo: 0 },
+      'PA': { nome: 'Pará', codigo: 0 },
+      'PB': { nome: 'Paraíba', codigo: 0 },
+      'PR': { nome: 'Paraná', codigo: 0 },
+      'PE': { nome: 'Pernambuco', codigo: 0 },
+      'PI': { nome: 'Piauí', codigo: 0 },
+      'RJ': { nome: 'Rio de Janeiro', codigo: 0 },
+      'RN': { nome: 'Rio Grande do Norte', codigo: 0 },
+      'RS': { nome: 'Rio Grande do Sul', codigo: 0 },
+      'RO': { nome: 'Rondônia', codigo: 0 },
+      'RR': { nome: 'Roraima', codigo: 0 },
+      'SC': { nome: 'Santa Catarina', codigo: 0 },
+      'SP': { nome: 'São Paulo', codigo: 3550308 },
+      'SE': { nome: 'Sergipe', codigo: 0 },
+      'TO': { nome: 'Tocantins', codigo: 0 }
+    };
+
+    function buscarEmpresas() {
+      const estado = document.getElementById('estado').value;
+      const municipio = document.getElementById('municipio').value;
+      const cnae = document.getElementById('cnae').value;
+      const limit = document.getElementById('limit').value;
+
+      if (!estado || !municipio || !cnae) {
+        alert('Por favor, preencha Estado, Município e CNAE');
+        return;
+      }
+
+      const municipioIbge = estadosCNAE[estado]?.codigo || 3550308;
+
+      mostraCarregando();
+
+      fetch(`${API_BASE}/api/empresas?municipio=${municipioIbge}&cnae=${cnae}&municipioNome=${encodeURIComponent(municipio)}&limit=${limit}`)
+        .then(r => r.json())
+        .then(data => {
+          empresasData = data.empresas || [];
+          document.getElementById('showing').textContent = empresasData.length;
+          document.getElementById('total').textContent = data.total || 0;
+          document.getElementById('results-count').textContent = new Intl.NumberFormat('pt-BR').format(data.total || 0);
+
+          if (empresasData.length > 0) {
+            document.getElementById('export-btn').style.display = 'inline-block';
+            renderizarTabela(empresasData);
+          } else {
+            document.getElementById('results-container').innerHTML = `
+              <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <p>Nenhuma empresa encontrada com esses filtros</p>
+              </div>
+            `;
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('results-container').innerHTML = `
+            <div class="error">Erro ao buscar empresas: ${err.message}</div>
+          `;
+        });
+    }
+
+    function mostraCarregando() {
+      document.getElementById('results-container').innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p style="margin-top: 12px;">Carregando empresas...</p>
+        </div>
+      `;
+    }
+
+    function renderizarTabela(empresas) {
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>CNPJ</th>
+              <th>Razão Social / Fantasia</th>
+              <th>Tipo</th>
+              <th>Abertura</th>
+              <th>Telefone</th>
+              <th>E-mail</th>
+              <th>Endereço</th>
+              <th>Links</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${empresas.map(e => `
+              <tr>
+                <td><span class="cnpj">${e.cnpj}</span></td>
+                <td>
+                  <div class="company-name">${e.fantasia || e.razao}</div>
+                  <div style="font-size: 11px; color: var(--gray-500);">${e.razao}</div>
+                </td>
+                <td><span class="badge ${e.tipo === 'MATRIZ' ? 'badge-matriz' : 'badge-filial'}">${e.tipo}</span></td>
+                <td>${e.abertura || '—'}</td>
+                <td>${e.tel1 || e.tel2 || '—'}</td>
+                <td><a href="mailto:${e.email}" style="color: var(--primary); text-decoration: none;">${e.email || '—'}</a></td>
+                <td><small>${e.logr} ${e.num} ${e.bairro} ${e.municipio}</small></td>
+                <td>
+                  <div class="links">
+                    ${e.maps ? `<a href="${e.maps}" target="_blank" class="link-btn" title="Google Maps">📍</a>` : ''}
+                    ${e.wpp ? `<a href="${e.wpp}" target="_blank" class="link-btn" title="WhatsApp">💬</a>` : ''}
+                    ${e.linkedin ? `<a href="${e.linkedin}" target="_blank" class="link-btn" title="LinkedIn">in</a>` : ''}
+                    ${e.instagram ? `<a href="${e.instagram}" target="_blank" class="link-btn" title="Instagram">📷</a>` : ''}
+                    ${e.facebook ? `<a href="${e.facebook}" target="_blank" class="link-btn" title="Facebook">f</a>` : ''}
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      document.getElementById('results-container').innerHTML = html;
+    }
+
+    function exportarCSV() {
+      if (empresasData.length === 0) {
+        alert('Nenhum dado para exportar');
+        return;
+      }
+
+      const headers = ['CNPJ', 'Razão Social', 'Fantasia', 'Tipo', 'Abertura', 'Telefone 1', 'Telefone 2', 'Email', 'Endereço', 'Bairro', 'CEP', 'Municipio', 'UF', 'Maps', 'LinkedIn', 'Instagram', 'TikTok', 'Facebook', 'WhatsApp'];
+
+      const rows = empresasData.map(e => [
+        e.cnpj,
+        e.razao,
+        e.fantasia,
+        e.tipo,
+        e.abertura,
+        e.tel1,
+        e.tel2,
+        e.email,
+        e.logr,
+        e.bairro,
+        e.cep,
+        e.municipio,
+        e.uf,
+        e.maps,
+        e.linkedin,
+        e.instagram,
+        e.tiktok,
+        e.facebook,
+        e.wpp
+      ]);
+
+      let csv = headers.map(h => `"${h}"`).join(',') + '\n';
+      csv += rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `empresas_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+    }
+
+    function limparFiltros() {
+      document.getElementById('estado').value = '';
+      document.getElementById('municipio').value = '';
+      document.getElementById('cnae').value = '';
+      document.getElementById('limit').value = '25';
+      document.getElementById('results-container').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
+        </div>
+      `;
+      document.getElementById('export-btn').style.display = 'none';
+      document.getElementById('showing').textContent = '0';
+      document.getElementById('total').textContent = '0';
+    }
+
+    // Inicializar mapa
+    function inicializarMapa() {
+      const width = document.getElementById('map').offsetWidth;
+      const height = 500;
+
+      const svg = d3.select('#map').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      // Simulação de dados do mapa - em produção seria um arquivo GeoJSON real
+      const estadosFormas = [
+        { id: 'SP', nome: 'São Paulo', density: 0.9 },
+        { id: 'RJ', nome: 'Rio de Janeiro', density: 0.8 },
+        { id: 'MG', nome: 'Minas Gerais', density: 0.7 },
+        { id: 'BA', nome: 'Bahia', density: 0.6 },
+        { id: 'SC', nome: 'Santa Catarina', density: 0.6 },
+        { id: 'RS', nome: 'Rio Grande do Sul', density: 0.6 },
+        { id: 'PA', nome: 'Pará', density: 0.4 },
+        { id: 'PR', nome: 'Paraná', density: 0.7 },
+        { id: 'GO', nome: 'Goiás', density: 0.5 },
+        { id: 'DF', nome: 'Distrito Federal', density: 0.5 },
+        { id: 'PE', nome: 'Pernambuco', density: 0.5 },
+        { id: 'CE', nome: 'Ceará', density: 0.5 },
+        { id: 'ES', nome: 'Espírito Santo', density: 0.5 },
+        { id: 'MA', nome: 'Maranhão', density: 0.3 },
+        { id: 'PB', nome: 'Paraíba', density: 0.4 },
+        { id: 'MT', nome: 'Mato Grosso', density: 0.3 },
+        { id: 'MS', nome: 'Mato Grosso do Sul', density: 0.4 },
+        { id: 'PI', nome: 'Piauí', density: 0.3 },
+        { id: 'RN', nome: 'Rio Grande do Norte', density: 0.3 },
+        { id: 'AL', nome: 'Alagoas', density: 0.3 },
+        { id: 'SE', nome: 'Sergipe', density: 0.2 },
+        { id: 'RO', nome: 'Rondônia', density: 0.2 },
+        { id: 'AC', nome: 'Acre', density: 0.1 },
+        { id: 'AM', nome: 'Amazonas', density: 0.2 },
+        { id: 'RR', nome: 'Roraima', density: 0.1 },
+        { id: 'AP', nome: 'Amapá', density: 0.1 },
+        { id: 'TO', nome: 'Tocantins', density: 0.2 }
+      ];
+
+      const colorScale = d3.scaleLinear()
+        .domain([0, 1])
+        .range(['#b3d9ff', '#2952a3']);
+
+      // Mensagem informativa
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height / 2)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#999')
+        .text('Mapa Choropleth - GeoJSON em produção');
+
+      // Mostrar legenda de dados
+      let yPos = 20;
+      estadosFormas.slice(0, 5).forEach(est => {
+        svg.append('rect')
+          .attr('x', 20)
+          .attr('y', yPos)
+          .attr('width', 20)
+          .attr('height', 20)
+          .style('fill', colorScale(est.density));
+
+        svg.append('text')
+          .attr('x', 50)
+          .attr('y', yPos + 15)
+          .attr('font-size', '12px')
+          .text(`${est.nome}: ${Math.round(est.density * 100)}%`);
+
+        yPos += 25;
+      });
+    }
+
+    // Executar ao carregar
+    document.addEventListener('DOMContentLoaded', () => {
+      inicializarMapa();
+
+      // Auto-preencher SP como padrão para demo
+      document.getElementById('estado').value = 'SP';
+    });
+
+    // Permitir busca ao pressionar Enter
+    document.getElementById('cnae').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') buscarEmpresas();
+    });
+
+    document.getElementById('municipio').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') buscarEmpresas();
+    });
+  </script>
+</body>
+</html>
