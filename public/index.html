@@ -516,13 +516,27 @@ function filtrarCnaes(){
 document.getElementById('cnae-search').addEventListener('input', filtrarCnaes);
 document.getElementById('cnae-secao-filter').addEventListener('change', filtrarCnaes);
 
-function selecionarCNAE(cnaeObj){
+async function selecionarCNAE(cnaeObj){
   cnaeAtual = cnaeObj; // {c,d,s}
   const info = estadosInfo[estadoAtual];
   setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, municipioAtual, `CNAE ${cnaeObj.c}`]);
 
-  const qtd = 12 + Math.floor(Math.random()*8);
-  dadosAtuais = gerarEmpresas(estadoAtual, municipioAtual, {codigo:cnaeObj.c, desc:cnaeObj.d}, qtd);
+  try {
+    // Encontra o código do município
+    const cidadesResp = await fetch(`/api/empresas/cidades?estado=${estadoAtual}`);
+    const cidades = await cidadesResp.json();
+    const cidadeSelecionada = cidades.find(c => c.municipio === municipioAtual);
+    const codigoMun = cidadeSelecionada ? cidadeSelecionada.codigo : municipioAtual;
+
+    // Carrega empresas reais da API
+    const empresasResp = await fetch(`/api/empresas?municipio=${codigoMun}&cnae=${cnaeObj.c}`);
+    const data = await empresasResp.json();
+    dadosAtuais = data.empresas || [];
+  } catch(err) {
+    console.error('Erro carregando empresas:', err);
+    dadosAtuais = [];
+  }
+
   renderTabela(dadosAtuais);
 
   document.getElementById('view-cnaes').classList.remove('active');
