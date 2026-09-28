@@ -7,28 +7,39 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     :root {
       --primary: #667eea;
       --primary-dark: #5568d3;
       --gray-50: #f9fafb;
       --gray-100: #f3f4f6;
       --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
       --gray-700: #374151;
       --gray-800: #1f2937;
       --gray-900: #111827;
       --blue-50: #eff6ff;
       --success: #10b981;
     }
+
+    html, body {
+      height: 100%;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--gray-50);
       color: var(--gray-900);
+      line-height: 1.6;
     }
+
     header {
       background: linear-gradient(135deg, var(--primary) 0%, #764ba2 100%);
       color: white;
       padding: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+
     .header-content {
       max-width: 1400px;
       margin: 0 auto;
@@ -37,173 +48,313 @@
       justify-content: space-between;
       align-items: center;
     }
+
     .logo {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 700;
+      letter-spacing: -0.5px;
     }
+
     .header-stats {
       display: flex;
-      gap: 30px;
+      gap: 40px;
     }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: right;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
     .container {
       max-width: 1400px;
       margin: 0 auto;
       padding: 30px 20px;
     }
-    .layout {
+
+    .main-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 2fr 1.2fr;
       gap: 30px;
       margin-bottom: 30px;
     }
+
     .panel {
       background: white;
       border-radius: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid var(--gray-200);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
+
     .panel-header {
       background: var(--gray-50);
       border-bottom: 1px solid var(--gray-200);
       padding: 16px 24px;
       font-weight: 600;
+      font-size: 15px;
+      color: var(--gray-900);
     }
+
     .panel-body {
       padding: 24px;
+      flex: 1;
+      overflow-y: auto;
     }
-    .filters {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--gray-700);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    input, select {
-      padding: 10px 12px;
-      border: 1px solid var(--gray-200);
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    .button-group {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-    .btn-secondary {
-      background: var(--gray-200);
-      color: var(--gray-800);
-    }
-    #map {
+
+    .map-container {
       width: 100%;
       height: 500px;
       background: var(--blue-50);
       border-radius: 8px;
+      margin-bottom: 20px;
     }
+
+    .map-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .estado {
+      fill: #b3d9ff;
+      stroke: white;
+      stroke-width: 1.5;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .estado:hover {
+      stroke-width: 2.5;
+      filter: brightness(1.2);
+    }
+
+    .estado-label {
+      font-size: 12px;
+      font-weight: 600;
+      fill: #374151;
+      pointer-events: none;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
     .map-legend {
-      margin-top: 16px;
       padding: 16px;
       background: var(--gray-100);
       border-radius: 8px;
       font-size: 12px;
     }
+
     .legend-item {
       display: flex;
       align-items: center;
       gap: 8px;
       margin-bottom: 8px;
+      padding: 4px 0;
     }
+
+    .legend-item:last-child {
+      margin-bottom: 0;
+    }
+
     .legend-color {
-      width: 20px;
-      height: 20px;
-      border-radius: 4px;
+      width: 24px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.1);
     }
+
+    .legend-label {
+      font-size: 12px;
+      color: var(--gray-700);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      padding: 10px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      background: white;
+      color: var(--gray-900);
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
+
+    button {
+      flex: 1;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--gray-200);
+      color: var(--gray-800);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-300);
+    }
+
     .tip {
       background: #fef3c7;
       border-left: 4px solid #f59e0b;
-      padding: 12px 16px;
+      padding: 12px 14px;
       border-radius: 4px;
-      font-size: 13px;
+      font-size: 12px;
       color: #92400e;
-      margin-bottom: 16px;
+      line-height: 1.5;
     }
+
     .results-section {
       grid-column: 1 / -1;
     }
-    .results-info {
-      font-size: 13px;
-      color: var(--gray-600);
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
+
+    .results-info {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-left: 20px;
+    }
+
+    .results-container {
+      padding: 24px;
+      min-height: 200px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
     }
+
     thead {
       background: var(--gray-50);
       border-bottom: 2px solid var(--gray-200);
+      position: sticky;
+      top: 0;
     }
+
     th {
       padding: 12px 16px;
       text-align: left;
       font-weight: 600;
       color: var(--gray-700);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.3px;
     }
+
     td {
       padding: 12px 16px;
       border-bottom: 1px solid var(--gray-200);
+      color: var(--gray-800);
     }
+
+    tbody tr:hover {
+      background: var(--gray-50);
+    }
+
     .empty-state {
       text-align: center;
       padding: 60px 20px;
       color: var(--gray-600);
     }
-    svg text {
-      pointer-events: none;
-      font-size: 11px;
-      font-weight: 500;
-      fill: #374151;
-      text-anchor: middle;
+
+    .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
     }
-    .estado {
-      stroke: white;
-      stroke-width: 1.5px;
-      cursor: pointer;
-    }
-    .estado:hover {
-      filter: brightness(1.2);
-      stroke-width: 2.5px;
-    }
+
     @media (max-width: 1024px) {
-      .layout { grid-template-columns: 1fr; }
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-stats {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .stat-item {
+        text-align: left;
+      }
+
+      .logo {
+        font-size: 20px;
+      }
     }
   </style>
 </head>
@@ -212,98 +363,118 @@
     <div class="header-content">
       <div class="logo">🏢 Empresas Ativas Brasil</div>
       <div class="header-stats">
-        <div>
-          <div style="opacity: 0.9; font-size: 14px;">Total de Empresas</div>
-          <div style="font-weight: 600; font-size: 16px;"><span id="total">45.1M</span>+</div>
+        <div class="stat-item">
+          <div class="stat-label">Total de Empresas</div>
+          <div class="stat-value"><span id="total">45.1M</span>+</div>
         </div>
-        <div>
-          <div style="opacity: 0.9; font-size: 14px;">Resultados</div>
-          <div style="font-weight: 600; font-size: 16px;"><span id="showing">0</span></div>
+        <div class="stat-item">
+          <div class="stat-label">Resultados</div>
+          <div class="stat-value"><span id="showing">0</span></div>
         </div>
       </div>
     </div>
   </header>
 
   <div class="container">
-    <div class="layout">
+    <div class="main-layout">
+      <!-- ESQUERDA: MAPA -->
       <div class="panel">
         <div class="panel-header">📍 Mapa do Brasil - Densidade de Empresas</div>
         <div class="panel-body">
-          <div id="map"></div>
+          <div class="map-container" id="map"></div>
+
           <div class="map-legend">
-            <strong>Densidade:</strong>
+            <div style="font-weight: 600; margin-bottom: 10px; color: var(--gray-900);">Densidade por Estado:</div>
             <div class="legend-item">
               <div class="legend-color" style="background: #b3d9ff;"></div>
-              <span>Baixa (0-1M)</span>
+              <div class="legend-label">Baixa (0-1M)</div>
             </div>
             <div class="legend-item">
               <div class="legend-color" style="background: #60a5fa;"></div>
-              <span>Média (1M-2M)</span>
+              <div class="legend-label">Média (1M-2M)</div>
             </div>
             <div class="legend-item">
               <div class="legend-color" style="background: #2952a3;"></div>
-              <span>Alta (2M+)</span>
+              <div class="legend-label">Alta (2M+)</div>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- DIREITA: FILTROS -->
       <div class="panel">
         <div class="panel-header">🔍 Filtros de Busca</div>
         <div class="panel-body">
           <div class="filters">
             <div class="filter-group">
-              <label>Estado (UF)</label>
+              <label for="estado">Estado (UF)</label>
               <select id="estado">
-                <option value="">Selecione um estado...</option>
-                <option value="SP">São Paulo (SP)</option>
-                <option value="RJ">Rio de Janeiro (RJ)</option>
-                <option value="MG">Minas Gerais (MG)</option>
-                <option value="BA">Bahia (BA)</option>
+                <option value="">Selecione...</option>
+                <option value="SP">São Paulo</option>
+                <option value="RJ">Rio de Janeiro</option>
+                <option value="MG">Minas Gerais</option>
+                <option value="BA">Bahia</option>
+                <option value="PR">Paraná</option>
+                <option value="SC">Santa Catarina</option>
+                <option value="RS">Rio Grande do Sul</option>
+                <option value="PE">Pernambuco</option>
+                <option value="CE">Ceará</option>
+                <option value="PA">Pará</option>
               </select>
             </div>
+
             <div class="filter-group">
-              <label>Município</label>
+              <label for="municipio">Município</label>
               <input type="text" id="municipio" placeholder="Ex: São Paulo...">
             </div>
+
             <div class="filter-group">
-              <label>CNAE (Atividade)</label>
+              <label for="cnae">CNAE (Atividade)</label>
               <input type="text" id="cnae" placeholder="Ex: 4711301">
             </div>
+
             <div class="filter-group">
-              <label>Limite de Resultados</label>
+              <label for="limit">Limite de Resultados</label>
               <select id="limit">
-                <option value="25">25 resultados</option>
+                <option value="10">10 resultados</option>
+                <option value="25" selected>25 resultados</option>
                 <option value="50">50 resultados</option>
+                <option value="100">100 resultados</option>
               </select>
             </div>
           </div>
+
           <div class="button-group">
-            <button class="btn-primary" onclick="buscarEmpresas()">🔍 BUSCAR</button>
-            <button class="btn-secondary" onclick="limparFiltros()">🗑️ LIMPAR</button>
+            <button class="btn-primary" onclick="buscarEmpresas()">🔍 Buscar</button>
+            <button class="btn-secondary" onclick="limparFiltros()">Limpar</button>
           </div>
-          <div class="tip">💡 Dica: Clique em um estado no mapa para filtrar automaticamente.</div>
+
+          <div class="tip">
+            <strong>💡 Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima e clique em Buscar.
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- RESULTADOS -->
     <div class="panel results-section">
       <div class="panel-header">
-        📊 Resultados da Busca
-        <span class="results-info">Mostrando <strong id="showing2">0</strong> de <strong id="total2">0</strong></span>
+        <div class="results-header">
+          <span>📊 Resultados da Busca</span>
+          <span class="results-info">Mostrando <strong id="count-results">0</strong> de <strong id="count-total">0</strong></span>
+        </div>
       </div>
-      <div class="panel-body">
-        <div id="results-container">
-          <div class="empty-state">
-            <p>Preencha os filtros e clique em "Buscar"</p>
-          </div>
+      <div class="results-container" id="results-container">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>Preencha os filtros e clique em "Buscar" para ver os resultados</p>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    const densidadeEstados = {
+    const DENSITY_MAP = {
       'SP': 0.9, 'RJ': 0.8, 'MG': 0.7, 'BA': 0.6, 'SC': 0.6, 'RS': 0.6,
       'PA': 0.4, 'PR': 0.7, 'GO': 0.5, 'DF': 0.5, 'PE': 0.5, 'CE': 0.5,
       'ES': 0.5, 'MA': 0.3, 'PB': 0.4, 'MT': 0.3, 'MS': 0.4, 'PI': 0.3,
@@ -311,106 +482,133 @@
       'RR': 0.1, 'AP': 0.1, 'TO': 0.2
     };
 
-    function inicializarMapa() {
+    const BRASIL_GEOJSON = {
+      "type": "FeatureCollection",
+      "features": [
+        {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[-73,-8],[-68,-8],[-68,-11],[-73,-11],[-73,-8]]]}},
+        {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-8],[-37,-8],[-37,-9],[-36,-9],[-36,-8]]]}},
+        {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[-51,0],[-54,0],[-54,5],[-51,5],[-51,0]]]}},
+        {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[-56,-3],[-73,-3],[-73,5],[-56,5],[-56,-3]]]}},
+        {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-9],[-48,-9],[-48,-18],[-41,-18],[-41,-9]]]}},
+        {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[-37,-3],[-41,-3],[-41,-7],[-37,-7],[-37,-3]]]}},
+        {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[-47.8,-15.4],[-48.2,-15.4],[-48.2,-15.8],[-47.8,-15.8],[-47.8,-15.4]]]}},
+        {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-17],[-42,-17],[-42,-21],[-39,-21],[-39,-17]]]}},
+        {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[-46,-13],[-53,-13],[-53,-19],[-46,-19],[-46,-13]]]}},
+        {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-2],[-46,-2],[-46,-10],[-41,-10],[-41,-2]]]}},
+        {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[-54,-8],[-61,-8],[-61,-17],[-54,-17],[-54,-8]]]}},
+        {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[-53,-19],[-57,-19],[-57,-24],[-53,-24],[-53,-19]]]}},
+        {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-14],[-46,-14],[-46,-23],[-39,-23],[-39,-14]]]}},
+        {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,2],[-58,2],[-58,-4],[-49,-4],[-49,2]]]}},
+        {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-6],[-37,-6],[-37,-8],[-35,-8],[-35,-6]]]}},
+        {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-22],[-54,-22],[-54,-27],[-48,-27],[-48,-22]]]}},
+        {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[-34,-7],[-37,-7],[-37,-10],[-34,-10],[-34,-7]]]}},
+        {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[-40,-2],[-45,-2],[-45,-11],[-40,-11],[-40,-2]]]}},
+        {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-20],[-43,-20],[-43,-23],[-41,-23],[-41,-20]]]}},
+        {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-5],[-37,-5],[-37,-6],[-35,-6],[-35,-5]]]}},
+        {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,-27],[-56,-27],[-56,-33],[-49,-33],[-49,-27]]]}},
+        {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[-59,-8],[-66,-8],[-66,-14],[-59,-14],[-59,-8]]]}},
+        {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[-58,0],[-61,0],[-61,5],[-58,5],[-58,0]]]}},
+        {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-26],[-54,-26],[-54,-30],[-48,-30],[-48,-26]]]}},
+        {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44,-19],[-51,-19],[-51,-25],[-44,-25],[-44,-19]]]}},
+        {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-10],[-37,-10],[-37,-11],[-36,-11],[-36,-10]]]}},
+        {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}}
+      ]
+    };
+
+    function renderMap() {
       const container = document.getElementById('map');
       const width = container.offsetWidth;
       const height = 500;
 
-      const svg = d3.select('#map').append('svg')
+      d3.select('#map').selectAll('*').remove();
+      const svg = d3.select('#map')
+        .append('svg')
         .attr('width', width)
-        .attr('height', height);
+        .attr('height', height)
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet');
 
-      const geojson = {
-        "type": "FeatureCollection",
-        "features": [
-          {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[-73,-8],[-68,-8],[-68,-11],[-73,-11],[-73,-8]]]}},
-          {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-8],[-37,-8],[-37,-9],[-36,-9],[-36,-8]]]}},
-          {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[-51,0],[-54,0],[-54,5],[-51,5],[-51,0]]]}},
-          {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[-56,-3],[-73,-3],[-73,5],[-56,5],[-56,-3]]]}},
-          {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-9],[-48,-9],[-48,-18],[-41,-18],[-41,-9]]]}},
-          {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[-37,-3],[-41,-3],[-41,-7],[-37,-7],[-37,-3]]]}},
-          {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[-47.8,-15.4],[-48.2,-15.4],[-48.2,-15.8],[-47.8,-15.8],[-47.8,-15.4]]]}},
-          {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-17],[-42,-17],[-42,-21],[-39,-21],[-39,-17]]]}},
-          {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[-46,-13],[-53,-13],[-53,-19],[-46,-19],[-46,-13]]]}},
-          {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-2],[-46,-2],[-46,-10],[-41,-10],[-41,-2]]]}},
-          {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[-54,-8],[-61,-8],[-61,-17],[-54,-17],[-54,-8]]]}},
-          {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[-53,-19],[-57,-19],[-57,-24],[-53,-24],[-53,-19]]]}},
-          {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-14],[-46,-14],[-46,-23],[-39,-23],[-39,-14]]]}},
-          {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,2],[-58,2],[-58,-4],[-49,-4],[-49,2]]]}},
-          {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-6],[-37,-6],[-37,-8],[-35,-8],[-35,-6]]]}},
-          {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-22],[-54,-22],[-54,-27],[-48,-27],[-48,-22]]]}},
-          {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[-34,-7],[-37,-7],[-37,-10],[-34,-10],[-34,-7]]]}},
-          {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[-40,-2],[-45,-2],[-45,-11],[-40,-11],[-40,-2]]]}},
-          {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-20],[-43,-20],[-43,-23],[-41,-23],[-41,-20]]]}},
-          {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-5],[-37,-5],[-37,-6],[-35,-6],[-35,-5]]]}},
-          {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,-27],[-56,-27],[-56,-33],[-49,-33],[-49,-27]]]}},
-          {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[-59,-8],[-66,-8],[-66,-14],[-59,-14],[-59,-8]]]}},
-          {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[-58,0],[-61,0],[-61,5],[-58,5],[-58,0]]]}},
-          {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-26],[-54,-26],[-54,-30],[-48,-30],[-48,-26]]]}},
-          {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44,-19],[-51,-19],[-51,-25],[-44,-25],[-44,-19]]]}},
-          {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-10],[-37,-10],[-37,-11],[-36,-11],[-36,-10]]]}},
-          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}}
-        ]
-      };
-
-      const projection = d3.geoMercator().fitSize([width, height], geojson);
+      const projection = d3.geoMercator().fitSize([width, height], BRASIL_GEOJSON);
       const path = d3.geoPath().projection(projection);
-      const colorScale = d3.scaleLinear().domain([0, 1]).range(['#b3d9ff', '#2952a3']);
+      const colorScale = d3.scaleLinear()
+        .domain([0, 1])
+        .range(['#b3d9ff', '#2952a3']);
 
+      // Desenhar estados
       svg.selectAll('.estado')
-        .data(geojson.features)
+        .data(BRASIL_GEOJSON.features, d => d.properties.uf)
         .enter()
         .append('path')
         .attr('class', 'estado')
-        .attr('d', d => path(d.geometry))
+        .attr('d', path)
         .style('fill', d => {
-          const uf = d.properties.uf;
-          const density = densidadeEstados[uf] || 0.3;
+          const density = DENSITY_MAP[d.properties.uf] || 0.3;
           return colorScale(density);
         })
-        .on('click', (event, d) => {
+        .on('click', function(event, d) {
           document.getElementById('estado').value = d.properties.uf;
           buscarEmpresas();
         });
 
-      svg.selectAll('.label')
-        .data(geojson.features)
+      // Desenhar labels
+      svg.selectAll('.estado-label')
+        .data(BRASIL_GEOJSON.features, d => d.properties.uf)
         .enter()
         .append('text')
-        .attr('x', d => {
-          try { return path.centroid(d.geometry)[0]; } catch { return 0; }
-        })
-        .attr('y', d => {
-          try { return path.centroid(d.geometry)[1]; } catch { return 0; }
-        })
+        .attr('class', 'estado-label')
+        .attr('x', d => path.centroid(d)[0])
+        .attr('y', d => path.centroid(d)[1])
         .text(d => d.properties.uf);
     }
 
     function buscarEmpresas() {
-      const estado = document.getElementById('estado').value;
-      const municipio = document.getElementById('municipio').value;
-      const cnae = document.getElementById('cnae').value;
-      const limit = document.getElementById('limit').value;
+      const estado = document.getElementById('estado').value || '';
+      const municipio = document.getElementById('municipio').value || '';
+      const cnae = document.getElementById('cnae').value || '';
+      const limit = document.getElementById('limit').value || '25';
 
       const params = new URLSearchParams({ estado, municipio, cnae, limit });
+
+      document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Carregando...</p></div>';
+
       fetch(`/api/empresas?${params}`)
         .then(r => r.json())
         .then(data => {
-          document.getElementById('showing2').textContent = data.data?.length || 0;
-          document.getElementById('total2').textContent = data.total || 0;
-          document.getElementById('results-container').innerHTML = `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
+          const items = data.data || [];
+          document.getElementById('count-results').textContent = items.length;
+          document.getElementById('count-total').textContent = data.total || 0;
+
+          if (items.length > 0) {
+            const html = `<table><thead><tr><th>CNPJ</th><th>Razão Social</th><th>Tipo</th><th>Telefone</th></tr></thead><tbody>${items.map(e => `<tr><td>${e.cnpj || '—'}</td><td>${e.razao || '—'}</td><td>${e.tipo || '—'}</td><td>${e.tel1 || '—'}</td></tr>`).join('')}</tbody></table>`;
+            document.getElementById('results-container').innerHTML = html;
+          } else {
+            document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>Nenhuma empresa encontrada</p></div>';
+          }
         })
-        .catch(e => console.error(e));
+        .catch(e => {
+          console.error(e);
+          document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Erro ao carregar dados</p></div>';
+        });
     }
 
     function limparFiltros() {
       document.getElementById('estado').value = '';
       document.getElementById('municipio').value = '';
       document.getElementById('cnae').value = '';
-      document.getElementById('results-container').innerHTML = '<div class="empty-state"><p>Preencha os filtros</p></div>';
+      document.getElementById('results-container').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>Preencha os filtros e clique em "Buscar"</p></div>';
+      document.getElementById('count-results').textContent = '0';
+      document.getElementById('count-total').textContent = '0';
     }
 
-    setTimeout(() => inicializarMapa(), 100);
+    // Inicializar ao carregar
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(renderMap, 50);
+    });
+
+    // Redenizar se redimensionar
+    window.addEventListener('resize', () => {
+      setTimeout(renderMap, 100);
+    });
   </script>
 </body>
 </html>
