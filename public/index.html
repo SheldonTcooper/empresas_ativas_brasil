@@ -406,6 +406,11 @@ async function carregarMapaEstado(uf){
   loading.style.display='none';
   mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([-14.8,-51.5],5);
 
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(mapEstado);
+
   const totalEstado = estadosInfo[uf].empresas;
   const n = geojson.features.length;
   // distribui pseudo-aleatoriamente o total do estado entre municípios (maior peso pro maior nome/1o da lista = capital)
