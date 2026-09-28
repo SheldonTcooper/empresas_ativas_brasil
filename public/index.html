@@ -297,13 +297,13 @@
     }
 
     .badge-matriz {
-      background: var(--success);
-      color: white;
+      background: #dbeafe;
+      color: #1e40af;
     }
 
     .badge-filial {
-      background: var(--blue-100);
-      color: var(--blue-600);
+      background: #fce7f3;
+      color: #831843;
     }
 
     .links {
@@ -313,62 +313,73 @@
     }
 
     .link-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
       width: 28px;
       height: 28px;
       border-radius: 6px;
       background: var(--gray-100);
-      color: var(--primary);
       text-decoration: none;
-      font-size: 12px;
+      text-align: center;
+      line-height: 28px;
+      font-size: 14px;
       transition: all 0.2s;
-      border: 1px solid var(--gray-200);
+      cursor: pointer;
     }
 
     .link-btn:hover {
       background: var(--primary);
       color: white;
-      border-color: var(--primary);
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--gray-600);
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid var(--gray-200);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
+      transform: scale(1.1);
     }
 
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      color: var(--gray-500);
+      color: var(--gray-600);
     }
 
     .empty-icon {
       font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .error {
+      padding: 20px;
+      background: #fee2e2;
+      border-left: 4px solid var(--danger);
+      color: #991b1b;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--gray-200);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .tip {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #92400e;
       margin-bottom: 16px;
     }
 
@@ -376,7 +387,9 @@
       .layout {
         grid-template-columns: 1fr;
       }
+    }
 
+    @media (max-width: 640px) {
       .filters {
         grid-template-columns: 1fr;
       }
@@ -387,54 +400,23 @@
       }
     }
 
-    @media (max-width: 640px) {
-      .container {
-        padding: 16px;
-      }
-
-      .layout {
-        gap: 16px;
-      }
-
-      table {
-        font-size: 12px;
-      }
-
-      th, td {
-        padding: 8px;
-      }
-
-      .table-controls {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
-
-    .tooltip {
-      position: relative;
-      cursor: help;
-    }
-
-    .tooltip::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 125%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--gray-900);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      white-space: nowrap;
-      opacity: 0;
+    svg text {
       pointer-events: none;
-      transition: opacity 0.2s;
-      z-index: 1000;
+      font-size: 11px;
+      font-weight: 500;
+      fill: #374151;
+      text-anchor: middle;
     }
 
-    .tooltip:hover::after {
-      opacity: 1;
+    .estado {
+      stroke: white;
+      stroke-width: 1.5px;
+    }
+
+    .estado:hover {
+      cursor: pointer;
+      filter: brightness(1.2);
+      stroke-width: 2.5px;
     }
   </style>
 </head>
@@ -444,12 +426,12 @@
       <div class="logo">🏢 Empresas Ativas Brasil</div>
       <div class="header-stats">
         <div class="stat-item">
-          <span class="stat-label">Total de Empresas</span>
-          <span class="stat-value" id="total-companies">45.1M+</span>
+          <div class="stat-label">Total de Empresas</div>
+          <div class="stat-value"><span id="total">45.1M</span>+</div>
         </div>
         <div class="stat-item">
-          <span class="stat-label">Resultados</span>
-          <span class="stat-value" id="results-count">0</span>
+          <div class="stat-label">Resultados</div>
+          <div class="stat-value"><span id="showing">0</span></div>
         </div>
       </div>
     </div>
@@ -457,7 +439,7 @@
 
   <div class="container">
     <div class="layout">
-      <!-- Mapa e Filtros -->
+      <!-- ESQUERDA: MAPA -->
       <div class="panel">
         <div class="panel-header">
           📍 Mapa do Brasil - Densidade de Empresas
@@ -471,7 +453,7 @@
               <span>Baixa (0-1M)</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color" style="background: #668fdd;"></div>
+              <div class="legend-color" style="background: #60a5fa;"></div>
               <span>Média (1M-2M)</span>
             </div>
             <div class="legend-item">
@@ -482,7 +464,7 @@
         </div>
       </div>
 
-      <!-- Filtros -->
+      <!-- DIREITA: FILTROS -->
       <div class="panel">
         <div class="panel-header">
           🔍 Filtros de Busca
@@ -493,32 +475,32 @@
               <label for="estado">Estado (UF)</label>
               <select id="estado">
                 <option value="">Selecione um estado...</option>
-                <option value="AC">Acre (AC)</option>
-                <option value="AL">Alagoas (AL)</option>
-                <option value="AP">Amapá (AP)</option>
-                <option value="AM">Amazonas (AM)</option>
+                <option value="SP">São Paulo (SP)</option>
+                <option value="RJ">Rio de Janeiro (RJ)</option>
+                <option value="MG">Minas Gerais (MG)</option>
                 <option value="BA">Bahia (BA)</option>
-                <option value="CE">Ceará (CE)</option>
-                <option value="DF">Distrito Federal (DF)</option>
-                <option value="ES">Espírito Santo (ES)</option>
+                <option value="SC">Santa Catarina (SC)</option>
+                <option value="RS">Rio Grande do Sul (RS)</option>
+                <option value="PA">Pará (PA)</option>
+                <option value="PR">Paraná (PR)</option>
                 <option value="GO">Goiás (GO)</option>
+                <option value="DF">Distrito Federal (DF)</option>
+                <option value="PE">Pernambuco (PE)</option>
+                <option value="CE">Ceará (CE)</option>
+                <option value="ES">Espírito Santo (ES)</option>
                 <option value="MA">Maranhão (MA)</option>
+                <option value="PB">Paraíba (PB)</option>
                 <option value="MT">Mato Grosso (MT)</option>
                 <option value="MS">Mato Grosso do Sul (MS)</option>
-                <option value="MG">Minas Gerais (MG)</option>
-                <option value="PA">Pará (PA)</option>
-                <option value="PB">Paraíba (PB)</option>
-                <option value="PR">Paraná (PR)</option>
-                <option value="PE">Pernambuco (PE)</option>
                 <option value="PI">Piauí (PI)</option>
-                <option value="RJ">Rio de Janeiro (RJ)</option>
                 <option value="RN">Rio Grande do Norte (RN)</option>
-                <option value="RS">Rio Grande do Sul (RS)</option>
-                <option value="RO">Rondônia (RO)</option>
-                <option value="RR">Roraima (RR)</option>
-                <option value="SC">Santa Catarina (SC)</option>
-                <option value="SP">São Paulo (SP)</option>
+                <option value="AL">Alagoas (AL)</option>
                 <option value="SE">Sergipe (SE)</option>
+                <option value="RO">Rondônia (RO)</option>
+                <option value="AC">Acre (AC)</option>
+                <option value="AM">Amazonas (AM)</option>
+                <option value="RR">Roraima (RR)</option>
+                <option value="AP">Amapá (AP)</option>
                 <option value="TO">Tocantins (TO)</option>
               </select>
             </div>
@@ -545,33 +527,32 @@
           </div>
 
           <div class="button-group">
-            <button class="btn-primary" onclick="buscarEmpresas()">🔍 Buscar</button>
-            <button class="btn-secondary" onclick="limparFiltros()">🔄 Limpar</button>
+            <button class="btn-primary" onclick="buscarEmpresas()">🔍 BUSCAR</button>
+            <button class="btn-secondary" onclick="limparFiltros()">🗑️ LIMPAR</button>
           </div>
 
-          <div style="margin-top: 20px; padding: 16px; background: var(--blue-50); border-radius: 8px; font-size: 12px; color: var(--blue-600);">
-            <strong>💡 Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima.
+          <div class="tip">
+            💡 <strong>Dica:</strong> Clique em um estado no mapa para filtrar automaticamente, ou preencha os campos acima.
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Resultados -->
+    <!-- RESULTADOS -->
     <div class="panel results-section">
       <div class="panel-header">
         📊 Resultados da Busca
-        <div class="results-info" id="results-info"></div>
+        <div class="results-info">
+          Mostrando <strong id="showing">0</strong> de <strong id="total">0</strong> empresas
+        </div>
       </div>
       <div class="panel-body">
         <div class="table-controls">
-          <span class="results-info">
-            Mostrando <strong id="showing">0</strong> de <strong id="total">0</strong> empresas
-          </span>
-          <div class="button-group">
-            <button class="btn-success" onclick="exportarCSV()" id="export-btn" style="display: none;">📥 Exportar CSV</button>
-          </div>
+          <div></div>
+          <button class="btn-success" id="export-btn" onclick="exportarCSV()" style="display: none;">
+            📥 Exportar CSV
+          </button>
         </div>
-
         <div id="results-container">
           <div class="empty-state">
             <div class="empty-icon">📭</div>
@@ -583,60 +564,27 @@
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3002';
     let empresasData = [];
-    let estadoSelecionado = '';
-    let municipioSelecionado = '';
-
-    const estadosCNAE = {
-      'AC': { nome: 'Acre', codigo: 0 },
-      'AL': { nome: 'Alagoas', codigo: 0 },
-      'AP': { nome: 'Amapá', codigo: 0 },
-      'AM': { nome: 'Amazonas', codigo: 0 },
-      'BA': { nome: 'Bahia', codigo: 0 },
-      'CE': { nome: 'Ceará', codigo: 0 },
-      'DF': { nome: 'Distrito Federal', codigo: 0 },
-      'ES': { nome: 'Espírito Santo', codigo: 0 },
-      'GO': { nome: 'Goiás', codigo: 0 },
-      'MA': { nome: 'Maranhão', codigo: 0 },
-      'MT': { nome: 'Mato Grosso', codigo: 0 },
-      'MS': { nome: 'Mato Grosso do Sul', codigo: 0 },
-      'MG': { nome: 'Minas Gerais', codigo: 0 },
-      'PA': { nome: 'Pará', codigo: 0 },
-      'PB': { nome: 'Paraíba', codigo: 0 },
-      'PR': { nome: 'Paraná', codigo: 0 },
-      'PE': { nome: 'Pernambuco', codigo: 0 },
-      'PI': { nome: 'Piauí', codigo: 0 },
-      'RJ': { nome: 'Rio de Janeiro', codigo: 0 },
-      'RN': { nome: 'Rio Grande do Norte', codigo: 0 },
-      'RS': { nome: 'Rio Grande do Sul', codigo: 0 },
-      'RO': { nome: 'Rondônia', codigo: 0 },
-      'RR': { nome: 'Roraima', codigo: 0 },
-      'SC': { nome: 'Santa Catarina', codigo: 0 },
-      'SP': { nome: 'São Paulo', codigo: 3550308 },
-      'SE': { nome: 'Sergipe', codigo: 0 },
-      'TO': { nome: 'Tocantins', codigo: 0 }
-    };
 
     function buscarEmpresas() {
-      const estado = document.getElementById('estado').value;
-      const municipio = document.getElementById('municipio').value;
-      const cnae = document.getElementById('cnae').value;
-      const limit = document.getElementById('limit').value;
-
-      if (!estado || !municipio || !cnae) {
-        alert('Por favor, preencha Estado, Município e CNAE');
-        return;
-      }
-
-      const municipioIbge = estadosCNAE[estado]?.codigo || 3550308;
+      const estado = document.getElementById('estado').value || '';
+      const municipio = document.getElementById('municipio').value || '';
+      const cnae = document.getElementById('cnae').value || '';
+      const limit = document.getElementById('limit').value || '25';
 
       mostraCarregando();
 
-      fetch(`${API_BASE}/api/empresas?municipio=${municipioIbge}&cnae=${cnae}&municipioNome=${encodeURIComponent(municipio)}&limit=${limit}`)
-        .then(r => r.json())
+      const params = new URLSearchParams({
+        estado: estado.toUpperCase(),
+        municipio: municipio.toUpperCase(),
+        cnae: cnae,
+        limit: limit
+      });
+
+      fetch(`/api/empresas?${params}`)
+        .then(res => res.json())
         .then(data => {
-          empresasData = data.empresas || [];
+          empresasData = data.data || [];
           document.getElementById('showing').textContent = empresasData.length;
           document.getElementById('total').textContent = data.total || 0;
           document.getElementById('results-count').textContent = new Intl.NumberFormat('pt-BR').format(data.total || 0);
@@ -790,53 +738,48 @@
         .attr('width', width)
         .attr('height', height);
 
-      // GeoJSON inline com formas reais dos estados
+      // GeoJSON com coordenadas brasileiras reais
       const geojson = {
         "type": "FeatureCollection",
         "features": [
-          {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[-73.9830,-7.9753],[-73.9830,-10.8353],[-68.9770,-10.8353],[-68.9770,-7.9753],[-73.9830,-7.9753]]]}},
-          {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[-36.0274,-9.0238],[-36.0274,-8.0196],[-37.0704,-8.0196],[-37.0704,-9.0238],[-36.0274,-9.0238]]]}},
-          {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[-51.6254,0.3536],[-51.6254,4.8383],[-54.8044,4.8383],[-54.8044,0.3536],[-51.6254,0.3536]]]}},
-          {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[-56.4084,-3.1190],[-56.4084,5.2704],[-73.8385,5.2704],[-73.8385,-3.1190],[-56.4084,-3.1190]]]}},
-          {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41.0156,-9.9923],[-41.0156,-17.9374],[-48.2637,-17.9374],[-48.2637,-9.9923],[-41.0156,-9.9923]]]}},
-          {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[-37.2769,-3.7304],[-37.2769,-7.2240],[-41.5086,-7.2240],[-41.5086,-3.7304],[-37.2769,-3.7304]]]}},
-          {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[-47.8822,-15.4942],[-47.8822,-15.7975],[-48.2721,-15.7975],[-48.2721,-15.4942],[-47.8822,-15.4942]]]}},
-          {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[-39.0883,-17.8769],[-39.0883,-21.3270],[-42.8204,-21.3270],[-42.8204,-17.8769],[-39.0883,-17.8769]]]}},
-          {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[-46.0479,-12.9575],[-46.0479,-19.4903],[-53.6289,-19.4903],[-53.6289,-12.9575],[-46.0479,-12.9575]]]}},
-          {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41.8204,-2.0468],[-41.8204,-10.2561],[-46.2744,-10.2561],[-46.2744,-2.0468],[-41.8204,-2.0468]]]}},
-          {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[-54.0965,-7.9974],[-54.0965,-17.7663],[-61.5629,-17.7663],[-61.5629,-7.9974],[-54.0965,-7.9974]]]}},
-          {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[-53.6289,-19.3314],[-53.6289,-24.5474],[-57.5759,-24.5474],[-57.5759,-19.3314],[-53.6289,-19.3314]]]}},
-          {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[-39.5586,-14.2283],[-39.5586,-23.3305],[-46.7185,-23.3305],[-46.7185,-14.2283],[-39.5586,-14.2283]]]}},
-          {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[-49.0433,1.8017],[-49.0433,-4.1603],[-58.2454,-4.1603],[-58.2454,1.8017],[-49.0433,1.8017]]]}},
-          {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[-35.1991,-6.8237],[-35.1991,-8.3270],[-37.9199,-8.3270],[-37.9199,-6.8237],[-35.1991,-6.8237]]]}},
-          {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[-48.0611,-22.3078],[-48.0611,-27.3448],[-54.6391,-27.3448],[-54.6391,-22.3078],[-48.0611,-22.3078]]]}},
-          {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[-34.7949,-7.1699],[-34.7949,-10.1578],[-37.2770,-10.1578],[-37.2770,-7.1699],[-34.7949,-7.1699]]]}},
-          {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[-40.2202,-2.7383],[-40.2202,-11.0486],[-45.5018,-11.0486],[-45.5018,-2.7383],[-40.2202,-2.7383]]]}},
-          {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[-41.0356,-20.7648],[-41.0356,-23.6732],[-43.4388,-23.6732],[-43.4388,-20.7648],[-41.0356,-20.7648]]]}},
-          {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[-35.1991,-5.0267],[-35.1991,-6.9830],[-37.6741,-6.9830],[-37.6741,-5.0267],[-35.1991,-5.0267]]]}},
-          {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[-49.6917,-27.0948],[-49.6917,-33.7683],[-56.5031,-33.7683],[-56.5031,-27.0948],[-49.6917,-27.0948]]]}},
-          {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[-59.8478,-8.4035],[-59.8478,-13.8359],[-66.2198,-13.8359],[-66.2198,-8.4035],[-59.8478,-8.4035]]]}},
-          {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[-58.8083,-0.8192],[-58.8083,5.2704],[-60.8164,5.2704],[-60.8164,-0.8192],[-58.8083,-0.8192]]]}},
-          {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48.3507,-25.9557],[-48.3507,-30.6399],[-54.9816,-30.6399],[-54.9816,-25.9557],[-48.3507,-25.9557]]]}},
-          {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44.1604,-19.7975],[-44.1604,-25.3112],[-51.1347,-25.3112],[-51.1347,-19.7975],[-44.1604,-19.7975]]]}},
-          {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36.4121,-10.0163],[-36.4121,-11.0486],[-37.6410,-11.0486],[-37.6410,-10.0163],[-36.4121,-10.0163]]]}},
-          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48.3007,-9.9830],[-48.3007,-13.5004],[-50.6581,-13.5004],[-50.6581,-9.9830],[-48.3007,-9.9830]]]}
+          {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[-73,-8],[-68,-8],[-68,-11],[-73,-11],[-73,-8]]]}},
+          {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-8],[-37,-8],[-37,-9],[-36,-9],[-36,-8]]]}},
+          {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[-51,0],[-54,0],[-54,5],[-51,5],[-51,0]]]}},
+          {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[-56,-3],[-73,-3],[-73,5],[-56,5],[-56,-3]]]}},
+          {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-9],[-48,-9],[-48,-18],[-41,-18],[-41,-9]]]}},
+          {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[-37,-3],[-41,-3],[-41,-7],[-37,-7],[-37,-3]]]}},
+          {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[-47.8,-15.4],[-48.2,-15.4],[-48.2,-15.8],[-47.8,-15.8],[-47.8,-15.4]]]}},
+          {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-17],[-42,-17],[-42,-21],[-39,-21],[-39,-17]]]}},
+          {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[-46,-13],[-53,-13],[-53,-19],[-46,-19],[-46,-13]]]}},
+          {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-2],[-46,-2],[-46,-10],[-41,-10],[-41,-2]]]}},
+          {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[-54,-8],[-61,-8],[-61,-17],[-54,-17],[-54,-8]]]}},
+          {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[-53,-19],[-57,-19],[-57,-24],[-53,-24],[-53,-19]]]}},
+          {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-14],[-46,-14],[-46,-23],[-39,-23],[-39,-14]]]}},
+          {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,2],[-58,2],[-58,-4],[-49,-4],[-49,2]]]}},
+          {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-6],[-37,-6],[-37,-8],[-35,-8],[-35,-6]]]}},
+          {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-22],[-54,-22],[-54,-27],[-48,-27],[-48,-22]]]}},
+          {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[-34,-7],[-37,-7],[-37,-10],[-34,-10],[-34,-7]]]}},
+          {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[-40,-2],[-45,-2],[-45,-11],[-40,-11],[-40,-2]]]}},
+          {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-20],[-43,-20],[-43,-23],[-41,-23],[-41,-20]]]}},
+          {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-5],[-37,-5],[-37,-6],[-35,-6],[-35,-5]]]}},
+          {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,-27],[-56,-27],[-56,-33],[-49,-33],[-49,-27]]]}},
+          {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[-59,-8],[-66,-8],[-66,-14],[-59,-14],[-59,-8]]]}},
+          {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[-58,0],[-61,0],[-61,5],[-58,5],[-58,0]]]}},
+          {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-26],[-54,-26],[-54,-30],[-48,-30],[-48,-26]]]}},
+          {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44,-19],[-51,-19],[-51,-25],[-44,-25],[-44,-19]]]}},
+          {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-10],[-37,-10],[-37,-11],[-36,-11],[-36,-10]]]}},
+          {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}
         ]
       };
 
       const renderMap = function(geojson) {
         console.log('🗺️ Renderizando mapa com', geojson.features.length, 'estados');
-        console.log('Dimensões SVG:', width, 'x', height);
-        console.log('Primeiro estado:', geojson.features[0]);
 
-        // Projeção Mercator para Brasil
+        // Projeção Mercator
         const projection = d3.geoMercator()
           .fitSize([width, height], geojson);
 
         const path = d3.geoPath().projection(projection);
-
-        console.log('Primeiro path:', path(geojson.features[0].geometry));
-        console.log('Projeção center:', projection.translate());
 
         const colorScale = d3.scaleLinear()
           .domain([0, 1])
@@ -853,30 +796,12 @@
             const density = densidadeEstados[d.properties.uf] || 0.3;
             return colorScale(density);
           })
-          .style('stroke', '#fff')
-          .style('stroke-width', 1.5)
-          .style('cursor', 'pointer')
           .on('mouseenter', function(event, d) {
-            d3.select(this)
-              .style('stroke-width', 2.5)
-              .style('filter', 'brightness(1.2)');
-
-            // Mostrar tooltip
+            d3.select(this).style('filter', 'brightness(1.2)');
             const tooltip = document.createElement('div');
             tooltip.className = 'map-tooltip';
             tooltip.textContent = `${d.properties.name} (${d.properties.uf})`;
-            tooltip.style.cssText = `
-              position: fixed;
-              background: rgba(0,0,0,0.8);
-              color: white;
-              padding: 8px 12px;
-              border-radius: 4px;
-              font-size: 12px;
-              left: ${event.pageX + 10}px;
-              top: ${event.pageY + 10}px;
-              pointer-events: none;
-              z-index: 10000;
-            `;
+            tooltip.style.cssText = `position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; left: ${event.pageX + 10}px; top: ${event.pageY + 10}px; pointer-events: none; z-index: 10000;`;
             document.body.appendChild(tooltip);
             this.tooltip = tooltip;
           })
@@ -887,9 +812,7 @@
             }
           })
           .on('mouseleave', function() {
-            d3.select(this)
-              .style('stroke-width', 1.5)
-              .style('filter', 'brightness(1)');
+            d3.select(this).style('filter', 'brightness(1)');
             if (this.tooltip) {
               this.tooltip.remove();
               this.tooltip = null;
@@ -897,8 +820,7 @@
           })
           .on('click', function(event, d) {
             document.getElementById('estado').value = d.properties.uf;
-            document.getElementById('municipio').value = d.properties.name;
-            alert(`Selecione um CNAE e clique em Buscar para ver empresas em ${d.properties.name}`);
+            buscarEmpresas();
           });
 
         // Adicionar labels
@@ -911,12 +833,10 @@
           .attr('y', d => path.centroid(d)[1])
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'middle')
-          .attr('font-size', '11px')
-          .attr('font-weight', '600')
-          .attr('fill', '#fff')
-          .attr('pointer-events', 'none')
-          .attr('text-shadow', '1px 1px 1px rgba(0,0,0,0.8)')
-          .text(d => d.properties.uf);
+          .text(d => d.properties.uf)
+          .style('font-weight', 'bold')
+          .style('fill', '#374151')
+          .style('font-size', '12px');
       };
 
       renderMap(geojson);
@@ -925,17 +845,10 @@
     // Executar ao carregar
     document.addEventListener('DOMContentLoaded', () => {
       inicializarMapa();
-
-      // Auto-preencher SP como padrão para demo
       document.getElementById('estado').value = 'SP';
     });
 
-    // Permitir busca ao pressionar Enter
     document.getElementById('cnae').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') buscarEmpresas();
-    });
-
-    document.getElementById('municipio').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') buscarEmpresas();
     });
   </script>
