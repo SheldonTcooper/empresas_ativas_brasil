@@ -824,7 +824,7 @@
         ]
       };
 
-      (function renderizarMapa(geojson) {
+      const renderMap = function(geojson) {
         // Projeção e path generator
         const projection = d3.geoMercator()
           .fitSize([width, height], geojson);
@@ -910,7 +910,9 @@
           .attr('pointer-events', 'none')
           .attr('text-shadow', '1px 1px 1px rgba(0,0,0,0.8)')
           .text(d => d.properties.uf);
-      })(geojson);
+      };
+
+      renderMap(geojson);
     }
 
     // Executar ao carregar
