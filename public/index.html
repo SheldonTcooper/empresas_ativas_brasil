@@ -365,23 +365,6 @@ function setCrumb(parts){
 }
 
 let mapEstado = null, geoLayerEstado = null;
-
-const estadosCoordenadas = {
-  'AC': {lat: -9.76, lng: -67.5, zoom: 8}, 'AL': {lat: -9.5, lng: -36.5, zoom: 8},
-  'AP': {lat: 1.4, lng: -52.2, zoom: 8}, 'AM': {lat: -3.5, lng: -65.1, zoom: 7},
-  'BA': {lat: -14.2, lng: -46.9, zoom: 8}, 'CE': {lat: -5.5, lng: -39.3, zoom: 8},
-  'DF': {lat: -15.79, lng: -47.88, zoom: 9}, 'ES': {lat: -19.2, lng: -40.3, zoom: 8},
-  'GO': {lat: -15.9, lng: -49.5, zoom: 8}, 'MA': {lat: -2.9, lng: -45.4, zoom: 8},
-  'MT': {lat: -12.6, lng: -55.5, zoom: 8}, 'MS': {lat: -20.5, lng: -54.8, zoom: 8},
-  'MG': {lat: -18.5, lng: -44.5, zoom: 8}, 'PA': {lat: -5.3, lng: -51.2, zoom: 7},
-  'PB': {lat: -7.1, lng: -35.9, zoom: 8}, 'PR': {lat: -24.3, lng: -51.5, zoom: 8},
-  'PE': {lat: -8.3, lng: -35.1, zoom: 8}, 'PI': {lat: -6.6, lng: -42.7, zoom: 8},
-  'RJ': {lat: -22.84, lng: -43.15, zoom: 9}, 'RN': {lat: -5.2, lng: -36.5, zoom: 8},
-  'RS': {lat: -29.5, lng: -52.5, zoom: 8}, 'RO': {lat: -8.76, lng: -63.9, zoom: 8},
-  'RR': {lat: 2.07, lng: -60.67, zoom: 8}, 'SC': {lat: -27.0, lng: -50.5, zoom: 8},
-  'SP': {lat: -22.25, lng: -49.01, zoom: 8}, 'SE': {lat: -10.4, lng: -37.1, zoom: 8},
-  'TO': {lat: -9.5, lng: -48.3, zoom: 8}
-};
 const cacheMunicipios = {};
 
 function selecionarEstado(uf){
@@ -407,12 +390,8 @@ async function carregarMapaEstado(uf){
   let geojson = cacheMunicipios[uf];
   if(!geojson){
     try{
-      const resp = await fetch(`/api/empresas/cidades?estado=${uf}`);
-      const cidades = await resp.json();
-      geojson = { type: 'FeatureCollection', features: cidades.map(c => ({
-        type: 'Feature', geometry: { type: 'Point', coordinates: [0,0] },
-        properties: { nome: c.municipio, codigo: c.codigo }
-      })) };
+      const resp = await fetch(`municipios/${uf}.json`);
+      geojson = await resp.json();
       cacheMunicipios[uf] = geojson;
     }catch(err){
       loading.innerHTML = '<p style="color:#f87171">Não foi possível carregar os municípios deste estado.</p>';
@@ -421,30 +400,32 @@ async function carregarMapaEstado(uf){
   }
 
   loading.style.display='none';
-  const coords = estadosCoordenadas[uf];
-  mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([coords.lat, coords.lng], coords.zoom);
+  mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([-14.8,-51.5],5);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
-  }).addTo(mapEstado);
-
-  // Cria marcadores para cada município
+  const totalEstado = estadosInfo[uf].empresas;
+  const n = geojson.features.length;
+  // distribui pseudo-aleatoriamente o total do estado entre municípios (maior peso pro maior nome/1o da lista = capital)
   geojson.features.forEach((f,i)=>{
-    const nome = f.properties.nome;
-    const marker = L.circleMarker([-15 + Math.random()*3, -51 + Math.random()*3], {
-      radius: 8,
-      fillColor: '#60a5fa',
-      color: '#fff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
-    }).addTo(mapEstado);
-
-    marker.bindPopup(`<b>${nome}</b>`);
-    marker.on('click', () => selecionarMunicipio(nome));
+    const peso = i===0 ? 0.18 : Math.random();
+    f.properties._empresas = Math.max(80, Math.round((totalEstado*peso)/(n*0.6)));
   });
 
+  geoLayerEstado = L.geoJSON(geojson,{
+    style: feature=>({
+      fillColor: corPorDensidade(feature.properties._empresas*6),
+      fillOpacity:0.85, color:'#0a0e27', weight:1
+    }),
+    onEachFeature:(feature,layer)=>{
+      const nome = feature.properties.nome;
+      const emp = feature.properties._empresas;
+      layer.bindTooltip(`<b>${nome}</b><br>${emp.toLocaleString('pt-BR')} empresas ativas`, {className:'mun-tooltip', sticky:true});
+      layer.on('mouseover', function(){ this.setStyle({fillOpacity:1, weight:2.2, color:'#93C5FD'}); });
+      layer.on('mouseout', function(){ this.setStyle({fillOpacity:0.85, weight:1, color:'#0a0e27'}); });
+      layer.on('click', ()=> selecionarMunicipio(nome));
+    }
+  }).addTo(mapEstado);
+
+  try{ mapEstado.fitBounds(geoLayerEstado.getBounds(), {padding:[20,20]}); }catch(e){}
   setTimeout(()=>{ if(mapEstado) mapEstado.invalidateSize(); }, 150);
 }
 
@@ -468,7 +449,7 @@ async function abrirTelaCnaes(){
     grid.innerHTML = `<div class="loading-overlay" style="position:static;height:200px;"><div class="spin"></div><p>Carregando classificações CNAE...</p></div>`;
     countEl.textContent = 'carregando...';
     try{
-      const resp = await fetch(`/api/empresas/cnaes?municipio=${municipioAtual}`);
+      const resp = await fetch('cnaes.json');
       cnaesData = await resp.json();
       popularFiltroSecoes();
     }catch(err){
@@ -526,27 +507,13 @@ function filtrarCnaes(){
 document.getElementById('cnae-search').addEventListener('input', filtrarCnaes);
 document.getElementById('cnae-secao-filter').addEventListener('change', filtrarCnaes);
 
-async function selecionarCNAE(cnaeObj){
+function selecionarCNAE(cnaeObj){
   cnaeAtual = cnaeObj; // {c,d,s}
   const info = estadosInfo[estadoAtual];
   setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, municipioAtual, `CNAE ${cnaeObj.c}`]);
 
-  try {
-    // Encontra o código do município
-    const cidadesResp = await fetch(`/api/empresas/cidades?estado=${estadoAtual}`);
-    const cidades = await cidadesResp.json();
-    const cidadeSelecionada = cidades.find(c => c.municipio === municipioAtual);
-    const codigoMun = cidadeSelecionada ? cidadeSelecionada.codigo : municipioAtual;
-
-    // Carrega empresas reais da API
-    const empresasResp = await fetch(`/api/empresas?municipio=${codigoMun}&cnae=${cnaeObj.c}`);
-    const data = await empresasResp.json();
-    dadosAtuais = data.empresas || [];
-  } catch(err) {
-    console.error('Erro carregando empresas:', err);
-    dadosAtuais = [];
-  }
-
+  const qtd = 12 + Math.floor(Math.random()*8);
+  dadosAtuais = gerarEmpresas(estadoAtual, municipioAtual, {codigo:cnaeObj.c, desc:cnaeObj.d}, qtd);
   renderTabela(dadosAtuais);
 
   document.getElementById('view-cnaes').classList.remove('active');
