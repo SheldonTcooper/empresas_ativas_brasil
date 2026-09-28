@@ -174,6 +174,59 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/* ── GET /api/cidades?estado=SP ── lista cidades por estado ── */
+router.get('/cidades', async (req, res, next) => {
+  const { estado } = req.query;
+  if (!estado) return res.status(400).json({ error: 'Parâmetro obrigatório: estado' });
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT DISTINCT m.descricao AS municipio, m.codigo
+      FROM municipio m
+      WHERE m.uf = $1
+      ORDER BY m.descricao
+    `, [estado]);
+
+    res.json(rows.map(r => ({ municipio: r.descricao, codigo: r.codigo })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ── GET /api/cnaes?estado=SP&municipio=3550308 ── lista CNAEs por cidade ── */
+router.get('/cnaes', async (req, res, next) => {
+  const { estado, municipio } = req.query;
+
+  try {
+    let query = `
+      SELECT DISTINCT est.cnae_fiscal, c.descricao
+      FROM estabelecimento est
+      LEFT JOIN cnae c ON c.codigo = est.cnae_fiscal
+      WHERE est.situacao_cadastral = '02'
+    `;
+    const params = [];
+
+    if (municipio) {
+      query += ` AND est.municipio = $1`;
+      params.push(municipio);
+    } else if (estado) {
+      query += ` AND est.uf = $1`;
+      params.push(estado);
+    }
+
+    query += ` ORDER BY est.cnae_fiscal LIMIT 100`;
+
+    const { rows } = await pool.query(query, params);
+
+    res.json(rows.map(r => ({
+      cnae: r.cnae_fiscal,
+      descricao: r.descricao || 'Não classificado'
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* ── GET /api/empresas/cnpj/:cnpj ── enriquecimento individual ── */
 router.get('/cnpj/:cnpj', async (req, res, next) => {
   const raw = req.params.cnpj.replace(/\D/g,'');

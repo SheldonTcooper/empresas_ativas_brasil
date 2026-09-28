@@ -1,492 +1,351 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Empresas Ativas Brasil</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmpresasAtivasBR — Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e27; --bg2:#0f1429; --panel:#111834; --panel2:#151d3f;
+  --border:#232c52; --border2:#2a3560;
+  --text:#e8ebf7; --muted:#8b93b8; --muted2:#5f6890;
+  --blue1:#93C5FD; --blue2:#60A5FA; --blue3:#3B82F6; --blue4:#1E3A8A;
+  --accent:#3b82f6; --accent2:#60a5fa;
+  --green:#22c55e; --orange:#f97316; --purple:#a855f7;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100vh;}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f9fafb;
-      color: #111827;
-    }
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;z-index:50;}
+.logo{font-size:19px;font-weight:800;color:#fff;display:flex;align-items:center;gap:2px;}
+.logo .ativas{color:var(--accent2);}
+.badge-br{background:var(--panel2);border:1px solid var(--border2);color:var(--muted);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px;}
+.spacer{flex:1;}
+.counter{background:var(--panel2);border:1px solid var(--border2);color:var(--accent2);font-weight:700;font-size:13px;padding:6px 14px;border-radius:8px;}
 
-    header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+.toolbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
+.toolbar.active{display:flex;}
+.search-input{background:var(--panel);border:1px solid var(--border2);color:var(--text);padding:9px 14px;border-radius:8px;font-size:13px;width:260px;}
+.tbtn{background:var(--panel);border:1px solid var(--border2);color:var(--text);padding:9px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.tbtn.green{background:var(--green);border-color:var(--green);color:#04220f;}
 
-    .header-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+.content{flex:1;position:relative;overflow:hidden;}
+.view{position:absolute;inset:0;display:none;}
+.view.active{display:block;}
 
-    .logo {
-      font-size: 28px;
-      font-weight: 700;
-    }
+#map, #map-estado{width:100%;height:100%;background:var(--bg);}
+.leaflet-container{background:var(--bg)!important;}
+.map-legend{position:absolute;bottom:20px;left:20px;background:rgba(17,24,52,0.95);border:1px solid var(--border2);padding:14px 16px;border-radius:10px;z-index:400;}
+.map-legend h4{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px;}
+.legend-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);margin-bottom:5px;}
+.legend-swatch{width:22px;height:13px;border-radius:3px;}
+.map-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:12.5px;z-index:400;background:rgba(17,24,52,0.85);padding:6px 16px;border-radius:20px;border:1px solid var(--border);}
 
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
+.side-panel{position:absolute;top:0;right:0;bottom:0;width:400px;background:var(--bg2);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .35s ease;z-index:500;display:flex;flex-direction:column;}
+.side-panel.open{transform:translateX(0);}
+.side-header{padding:20px 22px;border-bottom:1px solid var(--border);}
+.side-header h2{font-size:19px;font-weight:800;color:#fff;}
+.side-body{flex:1;overflow-y:auto;padding:18px 22px;}
+.side-search{width:100%;background:var(--panel);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+.side-list{display:flex;flex-direction:column;gap:6px;}
+.side-item{background:var(--panel);border:1px solid var(--border);padding:12px 14px;border-radius:8px;cursor:pointer;transition:.2s;}
+.side-item:hover{background:var(--panel2);border-color:var(--accent);}
+.side-item .t{font-weight:600;font-size:13.5px;color:var(--text);}
+.close-panel{position:absolute;top:18px;right:18px;background:var(--panel);border:1px solid var(--border2);color:var(--muted);width:28px;height:28px;border-radius:6px;cursor:pointer;}
 
-    .page { display: none; }
-    .page.active { display: block; }
+.back-btn{position:absolute;top:18px;left:18px;z-index:450;background:var(--panel);border:1px solid var(--border2);color:var(--text);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
 
-    .breadcrumb {
-      margin-bottom: 30px;
-      font-size: 14px;
-      color: #6b7280;
-    }
+.table-view{background:var(--bg);height:100%;overflow-y:auto;padding:18px 24px;}
+table{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);}
+thead th{background:var(--panel2);color:var(--muted);text-transform:uppercase;font-size:10.5px;font-weight:700;padding:12px 10px;text-align:left;border-bottom:1px solid var(--border2);}
+tbody td{padding:11px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+tbody tr:hover{background:var(--panel);}
+.cnpj{font-family:monospace;color:var(--muted);font-size:11px;}
+.razao{font-weight:600;color:#fff;}
+.badge{display:inline-block;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;}
+.b-matriz{background:rgba(34,197,94,0.15);color:#4ade80;}
+.email{color:var(--accent2);font-size:11.5px;}
 
-    .breadcrumb button {
-      background: none;
-      border: none;
-      color: #667eea;
-      cursor: pointer;
-      text-decoration: underline;
-      font-size: 14px;
-      padding: 0 4px;
-    }
-
-    .breadcrumb button:hover {
-      color: #5568d3;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 30px;
-      color: #111827;
-    }
-
-    /* PÁGINA 1: MAPA */
-    .map-container {
-      width: 100%;
-      height: 600px;
-      background: #eff6ff;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      margin-bottom: 30px;
-    }
-
-    .map-container svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    .estado {
-      fill: #b3d9ff;
-      stroke: white;
-      stroke-width: 1.5;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .estado:hover {
-      stroke-width: 2.5;
-      filter: brightness(1.2);
-    }
-
-    .estado-label {
-      font-size: 12px;
-      font-weight: 600;
-      fill: #374151;
-      pointer-events: none;
-      text-anchor: middle;
-      dominant-baseline: central;
-    }
-
-    .legend {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      margin-top: 20px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      font-size: 14px;
-    }
-
-    .legend-color {
-      width: 24px;
-      height: 16px;
-      border-radius: 3px;
-      border: 1px solid rgba(0,0,0,0.1);
-    }
-
-    /* PÁGINA 2 e 3: LISTAS */
-    .list-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-    }
-
-    .list-item {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: center;
-    }
-
-    .list-item:hover {
-      border-color: #667eea;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-      transform: translateY(-2px);
-    }
-
-    .list-item-name {
-      font-weight: 600;
-      color: #111827;
-      margin-bottom: 4px;
-    }
-
-    .list-item-count {
-      font-size: 12px;
-      color: #6b7280;
-    }
-
-    /* PÁGINA 4: TABELA */
-    .table-wrapper {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      overflow: hidden;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    thead {
-      background: #f3f4f6;
-      border-bottom: 2px solid #e5e7eb;
-    }
-
-    th {
-      padding: 16px;
-      text-align: left;
-      font-weight: 600;
-      color: #374151;
-      text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 0.3px;
-    }
-
-    td {
-      padding: 16px;
-      border-bottom: 1px solid #e5e7eb;
-      color: #374151;
-    }
-
-    tbody tr:hover {
-      background: #f9fafb;
-    }
-
-    /* BOTÕES */
-    .btn {
-      display: inline-block;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #5568d3;
-      transform: translateY(-1px);
-    }
-
-    .btn-back {
-      background: #e5e7eb;
-      color: #374151;
-      margin-bottom: 20px;
-    }
-
-    .btn-back:hover {
-      background: #d1d5db;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: #6b7280;
-    }
-
-    .empty-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
-      opacity: 0.5;
-    }
-
-    @media (max-width: 768px) {
-      .list-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      .map-container {
-        height: 400px;
-      }
-    }
-  </style>
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:5px;}
+</style>
 </head>
 <body>
-  <header>
-    <div class="header-content">
-      <div class="logo">🏢 Empresas Ativas Brasil</div>
-    </div>
-  </header>
+<div class="app">
+  <div class="header">
+    <div class="logo">Empresas<span class="ativas">Ativas</span>BR</div>
+    <span class="badge-br">BR Brasil</span>
+    <div class="spacer"></div>
+    <div class="counter" id="counter-total">45.148.920 empresas ativas</div>
+  </div>
 
-  <div class="container">
-    <!-- PÁGINA 1: MAPA DO BRASIL -->
-    <div id="page-map" class="page active">
-      <h1>Selecione um Estado</h1>
-      <div class="map-container" id="map"></div>
-      <div class="legend">
-        <div style="font-weight: 600; margin-bottom: 12px;">Clique no estado para ver as cidades</div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #b3d9ff;"></div>
-          <div>Estados com dados disponíveis</div>
+  <div class="toolbar" id="toolbar">
+    <input class="search-input" id="filtro-empresas" placeholder="🔍 Filtrar empresas...">
+    <button class="tbtn" onclick="voltarParaCNAEs()">← Mudar CNAE</button>
+    <button class="tbtn" onclick="resetar()">🏠 Início</button>
+    <button class="tbtn green" onclick="exportarCSV()">⬇ Exportar CSV</button>
+  </div>
+
+  <div class="content">
+    <div class="view active" id="view-map">
+      <div id="map"></div>
+      <div class="map-legend">
+        <h4>Empresas ativas</h4>
+        <div class="legend-row"><div class="legend-swatch" style="background:#93C5FD"></div>&lt; 200k</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#60A5FA"></div>200k – 1M</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#3B82F6"></div>1M – 3M</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#1E3A8A"></div>3M+</div>
+      </div>
+      <div class="map-hint">Clique em um estado no mapa para explorar empresas ativas</div>
+
+      <div class="side-panel" id="side-panel">
+        <button class="close-panel" onclick="fecharPainel()">✕</button>
+        <div class="side-header">
+          <h2 id="side-title">—</h2>
+        </div>
+        <div class="side-body">
+          <input class="side-search" id="side-search" placeholder="🔍 Buscar...">
+          <div class="side-list" id="side-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- PÁGINA 2: CIDADES -->
-    <div id="page-cities" class="page">
-      <button class="btn btn-back" onclick="goToMap()">← Voltar para Estados</button>
-      <h1 id="cities-title">Cidades de [Estado]</h1>
-      <div id="cities-grid" class="list-grid"></div>
+    <div class="view" id="view-state-map">
+      <button class="back-btn" onclick="voltarAoBrasil()">← Voltar</button>
+      <div id="map-estado"></div>
     </div>
 
-    <!-- PÁGINA 3: CNAES -->
-    <div id="page-cnaes" class="page">
-      <button class="btn btn-back" onclick="goToCities()">← Voltar para Cidades</button>
-      <h1 id="cnaes-title">Atividades (CNAEs) em [Cidade]</h1>
-      <div id="cnaes-grid" class="list-grid"></div>
-    </div>
-
-    <!-- PÁGINA 4: EMPRESAS -->
-    <div id="page-companies" class="page">
-      <button class="btn btn-back" onclick="goToCnaes()">← Voltar para Atividades</button>
-      <h1 id="companies-title">Empresas em [Cidade] - [CNAE]</h1>
-      <div class="table-wrapper">
+    <div class="view" id="view-table">
+      <div class="table-view">
         <table>
           <thead>
             <tr>
-              <th>CNPJ</th>
-              <th>Razão Social</th>
-              <th>Telefone</th>
-              <th>Email</th>
-              <th>Endereço</th>
+              <th>CNPJ</th><th>Razão Social</th><th>Telefone</th><th>E-mail</th><th>Endereço</th>
             </tr>
           </thead>
-          <tbody id="companies-tbody"></tbody>
+          <tbody id="tabela-body"></tbody>
         </table>
       </div>
     </div>
   </div>
+</div>
 
-  <script>
-    const DENSITY_MAP = {
-      'SP': 0.9, 'RJ': 0.8, 'MG': 0.7, 'BA': 0.6, 'SC': 0.6, 'RS': 0.6,
-      'PA': 0.4, 'PR': 0.7, 'GO': 0.5, 'DF': 0.5, 'PE': 0.5, 'CE': 0.5,
-      'ES': 0.5, 'MA': 0.3, 'PB': 0.4, 'MT': 0.3, 'MS': 0.4, 'PI': 0.3,
-      'RN': 0.3, 'AL': 0.3, 'SE': 0.2, 'RO': 0.2, 'AC': 0.1, 'AM': 0.2,
-      'RR': 0.1, 'AP': 0.1, 'TO': 0.2
-    };
+<script>
+const ESTADOS = {
+  'AC': {name: 'Acre', coords: [-8.76, -70.55]},
+  'AL': {name: 'Alagoas', coords: [-9.52, -36.52]},
+  'AP': {name: 'Amapá', coords: [1.41, -52.17]},
+  'AM': {name: 'Amazonas', coords: [-3.47, -65.10]},
+  'BA': {name: 'Bahia', coords: [-14.24, -46.87]},
+  'CE': {name: 'Ceará', coords: [-5.51, -39.32]},
+  'DF': {name: 'Distrito Federal', coords: [-15.79, -47.88]},
+  'ES': {name: 'Espírito Santo', coords: [-19.19, -40.34]},
+  'GO': {name: 'Goiás', coords: [-15.89, -49.50]},
+  'MA': {name: 'Maranhão', coords: [-2.89, -45.39]},
+  'MT': {name: 'Mato Grosso', coords: [-12.64, -55.50]},
+  'MS': {name: 'Mato Grosso do Sul', coords: [-20.51, -54.80]},
+  'MG': {name: 'Minas Gerais', coords: [-18.51, -44.55]},
+  'PA': {name: 'Pará', coords: [-5.33, -51.25]},
+  'PB': {name: 'Paraíba', coords: [-7.06, -35.86]},
+  'PR': {name: 'Paraná', coords: [-24.31, -51.51]},
+  'PE': {name: 'Pernambuco', coords: [-8.28, -35.07]},
+  'PI': {name: 'Piauí', coords: [-6.59, -42.75]},
+  'RJ': {name: 'Rio de Janeiro', coords: [-22.84, -43.15]},
+  'RN': {name: 'Rio Grande do Norte', coords: [-5.22, -36.52]},
+  'RS': {name: 'Rio Grande do Sul', coords: [-27.59, -53.50]},
+  'RO': {name: 'Rondônia', coords: [-8.76, -63.90]},
+  'RR': {name: 'Roraima', coords: [2.07, -60.67]},
+  'SC': {name: 'Santa Catarina', coords: [-27.04, -50.50]},
+  'SP': {name: 'São Paulo', coords: [-22.25, -49.01]},
+  'SE': {name: 'Sergipe', coords: [-10.38, -37.07]},
+  'TO': {name: 'Tocantins', coords: [-9.50, -48.30]}
+};
 
-    const BRASIL_GEOJSON = {
-      "type": "FeatureCollection",
-      "features": [
-        {"type": "Feature", "properties": {"name": "Acre", "uf": "AC"}, "geometry": {"type": "Polygon", "coordinates": [[[-73,-8],[-68,-8],[-68,-11],[-73,-11],[-73,-8]]]}},
-        {"type": "Feature", "properties": {"name": "Alagoas", "uf": "AL"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-8],[-37,-8],[-37,-9],[-36,-9],[-36,-8]]]}},
-        {"type": "Feature", "properties": {"name": "Amapá", "uf": "AP"}, "geometry": {"type": "Polygon", "coordinates": [[[-51,0],[-54,0],[-54,5],[-51,5],[-51,0]]]}},
-        {"type": "Feature", "properties": {"name": "Amazonas", "uf": "AM"}, "geometry": {"type": "Polygon", "coordinates": [[[-56,-3],[-73,-3],[-73,5],[-56,5],[-56,-3]]]}},
-        {"type": "Feature", "properties": {"name": "Bahia", "uf": "BA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-9],[-48,-9],[-48,-18],[-41,-18],[-41,-9]]]}},
-        {"type": "Feature", "properties": {"name": "Ceará", "uf": "CE"}, "geometry": {"type": "Polygon", "coordinates": [[[-37,-3],[-41,-3],[-41,-7],[-37,-7],[-37,-3]]]}},
-        {"type": "Feature", "properties": {"name": "Distrito Federal", "uf": "DF"}, "geometry": {"type": "Polygon", "coordinates": [[[-47.8,-15.4],[-48.2,-15.4],[-48.2,-15.8],[-47.8,-15.8],[-47.8,-15.4]]]}},
-        {"type": "Feature", "properties": {"name": "Espírito Santo", "uf": "ES"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-17],[-42,-17],[-42,-21],[-39,-21],[-39,-17]]]}},
-        {"type": "Feature", "properties": {"name": "Goiás", "uf": "GO"}, "geometry": {"type": "Polygon", "coordinates": [[[-46,-13],[-53,-13],[-53,-19],[-46,-19],[-46,-13]]]}},
-        {"type": "Feature", "properties": {"name": "Maranhão", "uf": "MA"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-2],[-46,-2],[-46,-10],[-41,-10],[-41,-2]]]}},
-        {"type": "Feature", "properties": {"name": "Mato Grosso", "uf": "MT"}, "geometry": {"type": "Polygon", "coordinates": [[[-54,-8],[-61,-8],[-61,-17],[-54,-17],[-54,-8]]]}},
-        {"type": "Feature", "properties": {"name": "Mato Grosso do Sul", "uf": "MS"}, "geometry": {"type": "Polygon", "coordinates": [[[-53,-19],[-57,-19],[-57,-24],[-53,-24],[-53,-19]]]}},
-        {"type": "Feature", "properties": {"name": "Minas Gerais", "uf": "MG"}, "geometry": {"type": "Polygon", "coordinates": [[[-39,-14],[-46,-14],[-46,-23],[-39,-23],[-39,-14]]]}},
-        {"type": "Feature", "properties": {"name": "Pará", "uf": "PA"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,2],[-58,2],[-58,-4],[-49,-4],[-49,2]]]}},
-        {"type": "Feature", "properties": {"name": "Paraíba", "uf": "PB"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-6],[-37,-6],[-37,-8],[-35,-8],[-35,-6]]]}},
-        {"type": "Feature", "properties": {"name": "Paraná", "uf": "PR"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-22],[-54,-22],[-54,-27],[-48,-27],[-48,-22]]]}},
-        {"type": "Feature", "properties": {"name": "Pernambuco", "uf": "PE"}, "geometry": {"type": "Polygon", "coordinates": [[[-34,-7],[-37,-7],[-37,-10],[-34,-10],[-34,-7]]]}},
-        {"type": "Feature", "properties": {"name": "Piauí", "uf": "PI"}, "geometry": {"type": "Polygon", "coordinates": [[[-40,-2],[-45,-2],[-45,-11],[-40,-11],[-40,-2]]]}},
-        {"type": "Feature", "properties": {"name": "Rio de Janeiro", "uf": "RJ"}, "geometry": {"type": "Polygon", "coordinates": [[[-41,-20],[-43,-20],[-43,-23],[-41,-23],[-41,-20]]]}},
-        {"type": "Feature", "properties": {"name": "Rio Grande do Norte", "uf": "RN"}, "geometry": {"type": "Polygon", "coordinates": [[[-35,-5],[-37,-5],[-37,-6],[-35,-6],[-35,-5]]]}},
-        {"type": "Feature", "properties": {"name": "Rio Grande do Sul", "uf": "RS"}, "geometry": {"type": "Polygon", "coordinates": [[[-49,-27],[-56,-27],[-56,-33],[-49,-33],[-49,-27]]]}},
-        {"type": "Feature", "properties": {"name": "Rondônia", "uf": "RO"}, "geometry": {"type": "Polygon", "coordinates": [[[-59,-8],[-66,-8],[-66,-14],[-59,-14],[-59,-8]]]}},
-        {"type": "Feature", "properties": {"name": "Roraima", "uf": "RR"}, "geometry": {"type": "Polygon", "coordinates": [[[-58,0],[-61,0],[-61,5],[-58,5],[-58,0]]]}},
-        {"type": "Feature", "properties": {"name": "Santa Catarina", "uf": "SC"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-26],[-54,-26],[-54,-30],[-48,-30],[-48,-26]]]}},
-        {"type": "Feature", "properties": {"name": "São Paulo", "uf": "SP"}, "geometry": {"type": "Polygon", "coordinates": [[[-44,-19],[-51,-19],[-51,-25],[-44,-25],[-44,-19]]]}},
-        {"type": "Feature", "properties": {"name": "Sergipe", "uf": "SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-36,-10],[-37,-10],[-37,-11],[-36,-11],[-36,-10]]]}},
-        {"type": "Feature", "properties": {"name": "Tocantins", "uf": "TO"}, "geometry": {"type": "Polygon", "coordinates": [[[-48,-10],[-50,-10],[-50,-13],[-48,-13],[-48,-10]]]}}
-      ]
-    };
+let estadoSelecionado = null;
+let codigoMunicipio = null;
+let cidadeSelecionada = null;
+let cnaeSelecionado = null;
+let mapaEstado = null;
+let empresas = [];
 
-    let state = {
-      selectedEstado: null,
-      selectedCity: null,
-      selectedCnae: null
-    };
+function mostrarView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
 
-    function showPage(pageId) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById(pageId).classList.add('active');
-      window.scrollTo(0, 0);
-    }
+function resetar() {
+  estadoSelecionado = null;
+  codigoMunicipio = null;
+  cidadeSelecionada = null;
+  cnaeSelecionado = null;
+  mostrarView('view-map');
+  fecharPainel();
+  if(mapaEstado) mapaEstado.remove();
+  document.getElementById('toolbar').classList.remove('active');
+}
 
-    function renderMap() {
-      const container = document.getElementById('map');
-      const width = container.offsetWidth;
-      const height = 500;
+async function selectEstado(uf) {
+  estadoSelecionado = uf;
+  mostrarView('view-state-map');
+  inicializarMapaEstado();
+  await carregarCidades(uf);
+}
 
-      d3.select('#map').selectAll('*').remove();
-      const svg = d3.select('#map')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height);
+function inicializarMapaEstado() {
+  if(mapaEstado) mapaEstado.remove();
+  const coords = ESTADOS[estadoSelecionado].coords;
+  mapaEstado = L.map('map-estado').setView(coords, 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(mapaEstado);
+}
 
-      const projection = d3.geoMercator().fitSize([width, height], BRASIL_GEOJSON);
-      const path = d3.geoPath().projection(projection);
-      const colorScale = d3.scaleLinear().domain([0, 1]).range(['#b3d9ff', '#2952a3']);
+async function carregarCidades(uf) {
+  try {
+    const res = await fetch(`/api/empresas/cidades?estado=${uf}`);
+    const cidades = await res.json();
 
-      svg.selectAll('.estado')
-        .data(BRASIL_GEOJSON.features)
-        .enter()
-        .append('path')
-        .attr('class', 'estado')
-        .attr('d', path)
-        .style('fill', d => colorScale(DENSITY_MAP[d.properties.uf] || 0.3))
-        .on('click', (event, d) => selectEstado(d));
+    abrirPainel();
+    document.getElementById('side-title').textContent = ESTADOS[uf].name;
 
-      svg.selectAll('.estado-label')
-        .data(BRASIL_GEOJSON.features)
-        .enter()
-        .append('text')
-        .attr('class', 'estado-label')
-        .attr('x', d => path.centroid(d)[0])
-        .attr('y', d => path.centroid(d)[1])
-        .text(d => d.properties.uf);
-    }
+    const lista = document.getElementById('side-list');
+    lista.innerHTML = '';
 
-    function selectEstado(feature) {
-      state.selectedEstado = feature.properties.uf;
-      document.getElementById('cities-title').textContent = `Cidades de ${feature.properties.name}`;
-      loadCities(feature.properties.uf);
-      showPage('page-cities');
-    }
-
-    function loadCities(uf) {
-      const cities = ['São Paulo', 'Rio de Janeiro', 'Campinas', 'Santos', 'Sorocaba'];
-      const grid = document.getElementById('cities-grid');
-      grid.innerHTML = cities.map(city => `
-        <div class="list-item" onclick="selectCity('${city}')">
-          <div class="list-item-name">${city}</div>
-          <div class="list-item-count">125 empresas</div>
-        </div>
-      `).join('');
-    }
-
-    function selectCity(city) {
-      state.selectedCity = city;
-      document.getElementById('cnaes-title').textContent = `Atividades (CNAEs) em ${city}`;
-      loadCnaes(state.selectedEstado, city);
-      showPage('page-cnaes');
-    }
-
-    function loadCnaes(uf, city) {
-      const cnaes = [
-        { code: '4711301', name: 'Comércio Varejista' },
-        { code: '4721102', name: 'Comércio Atacadista' },
-        { code: '4799008', name: 'Transporte de Carga' }
-      ];
-      const grid = document.getElementById('cnaes-grid');
-      grid.innerHTML = cnaes.map(cnae => `
-        <div class="list-item" onclick="selectCnae('${cnae.code}', '${cnae.name}')">
-          <div class="list-item-name">${cnae.code}</div>
-          <div class="list-item-count">${cnae.name}</div>
-        </div>
-      `).join('');
-    }
-
-    function selectCnae(code, name) {
-      state.selectedCnae = code;
-      document.getElementById('companies-title').textContent = `Empresas em ${state.selectedCity} - ${name}`;
-      loadCompanies(state.selectedEstado, state.selectedCity, code);
-      showPage('page-companies');
-    }
-
-    function loadCompanies(uf, city, cnae) {
-      const params = new URLSearchParams({ estado: uf, municipio: city, cnae, limit: '100' });
-      fetch(`/api/empresas?${params}`)
-        .then(r => r.json())
-        .then(data => {
-          const tbody = document.getElementById('companies-tbody');
-          if (data.data && data.data.length > 0) {
-            tbody.innerHTML = data.data.map(e => `
-              <tr>
-                <td>${e.cnpj || '—'}</td>
-                <td>${e.razao || '—'}</td>
-                <td>${e.tel1 || '—'}</td>
-                <td>${e.email || '—'}</td>
-                <td>${e.logr || '—'}</td>
-              </tr>
-            `).join('');
-          } else {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhuma empresa encontrada</td></tr>';
-          }
-        })
-        .catch(e => {
-          document.getElementById('companies-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #d32f2f;">Erro ao carregar dados</td></tr>';
-        });
-    }
-
-    function goToMap() { showPage('page-map'); }
-    function goToCities() { showPage('page-cities'); }
-    function goToCnaes() { showPage('page-cnaes'); }
-
-    // Inicializar
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(renderMap, 100);
+    cidades.forEach(cidade => {
+      const item = document.createElement('div');
+      item.className = 'side-item';
+      item.innerHTML = `<div class="t">${cidade.municipio}</div>`;
+      item.onclick = () => selectCidade(cidade.municipio, cidade.codigo);
+      lista.appendChild(item);
     });
-  </script>
+  } catch(e) {
+    console.error('Erro carregando cidades:', e);
+    alert('Erro ao carregar cidades');
+  }
+}
+
+async function selectCidade(municipio, codigo) {
+  cidadeSelecionada = municipio;
+  codigoMunicipio = codigo;
+  fecharPainel();
+  await carregarCNAEs();
+}
+
+async function carregarCNAEs() {
+  try {
+    const res = await fetch(`/api/empresas/cnaes?municipio=${codigoMunicipio}`);
+    const cnaes = await res.json();
+
+    const lista = document.getElementById('side-list');
+    lista.innerHTML = '';
+    document.getElementById('side-title').textContent = cidadeSelecionada;
+
+    abrirPainel();
+
+    cnaes.forEach(cnae => {
+      const item = document.createElement('div');
+      item.className = 'side-item';
+      item.innerHTML = `<div class="t">${cnae.cnae} - ${cnae.descricao}</div>`;
+      item.onclick = () => selectCNAE(cnae.cnae);
+      lista.appendChild(item);
+    });
+  } catch(e) {
+    console.error('Erro carregando CNAEs:', e);
+  }
+}
+
+async function selectCNAE(cnae) {
+  cnaeSelecionado = cnae;
+  fecharPainel();
+  document.getElementById('toolbar').classList.add('active');
+  await carregarEmpresas();
+  mostrarView('view-table');
+}
+
+async function carregarEmpresas() {
+  try {
+    const res = await fetch(`/api/empresas?municipio=${codigoMunicipio}&cnae=${cnaeSelecionado}`);
+    const data = await res.json();
+    empresas = data.empresas || [];
+
+    const tbody = document.getElementById('tabela-body');
+    tbody.innerHTML = '';
+
+    empresas.forEach(emp => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="cnpj">${emp.cnpj || '—'}</td>
+        <td class="razao">${emp.razao || '—'}</td>
+        <td>${emp.tel1 || '—'}</td>
+        <td class="email">${emp.email || '—'}</td>
+        <td>${emp.logr || '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    console.error('Erro carregando empresas:', e);
+  }
+}
+
+function abrirPainel() {
+  document.getElementById('side-panel').classList.add('open');
+}
+
+function fecharPainel() {
+  document.getElementById('side-panel').classList.remove('open');
+}
+
+function voltarAoBrasil() {
+  estadoSelecionado = null;
+  if(mapaEstado) mapaEstado.remove();
+  mostrarView('view-map');
+}
+
+function voltarParaCNAEs() {
+  mostrarView('view-state-map');
+  abrirPainel();
+}
+
+function exportarCSV() {
+  const csv = [['CNPJ', 'Razão Social', 'Telefone', 'E-mail', 'Endereço']];
+  empresas.forEach(emp => {
+    csv.push([emp.cnpj || '', emp.razao || '', emp.tel1 || '', emp.email || '', emp.logr || '']);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(csv);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Empresas");
+  XLSX.writeFile(wb, `empresas_${estadoSelecionado}_${cidadeSelecionada}.xlsx`);
+}
+
+function inicializarMapa() {
+  const map = L.map('map').setView([-15.47, -51.93], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  Object.entries(ESTADOS).forEach(([uf, data]) => {
+    const marker = L.circleMarker(data.coords, {
+      radius: 20,
+      fillColor: '#60a5fa',
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8
+    }).addTo(map);
+
+    marker.bindPopup(data.name);
+    marker.on('click', () => selectEstado(uf));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', inicializarMapa);
+</script>
 </body>
 </html>
