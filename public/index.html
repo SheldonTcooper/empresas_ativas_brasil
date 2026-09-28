@@ -827,9 +827,7 @@
       const renderMap = function(geojson) {
         // Projeção Mercator para Brasil
         const projection = d3.geoMercator()
-          .center([-51.9253, -14.2350])
-          .scale(1100)
-          .translate([width / 2, height / 2]);
+          .fitSize([width, height], geojson);
 
         const path = d3.geoPath().projection(projection);
 
