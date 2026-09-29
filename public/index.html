@@ -172,7 +172,6 @@ tbody tr:last-child td{border-bottom:none;}
     <button class="tbtn" onclick="resetar()">🏠 Início</button>
     <button class="tbtn green" onclick="exportarCSV()">⬇ Exportar CSV</button>
     <button class="tbtn orange" onclick="enviarN8n()">⚡ Enviar n8n</button>
-    <button class="tbtn" onclick="alert('Dados de demonstração — conecte a Brasil.IO / BrasilAPI para dados reais.')">📊 Dados demonstrativos</button>
     <div class="toolbar-count" id="toolbar-count"></div>
   </div>
 
@@ -367,6 +366,19 @@ function setCrumb(parts){
 let mapEstado = null, geoLayerEstado = null;
 const cacheMunicipios = {};
 
+(function(){
+  const s = document.createElement('style');
+  s.textContent = `
+    .rc-mun-wrap{padding:16px;height:100%;overflow-y:auto;box-sizing:border-box;}
+    .rc-mun-search{width:100%;padding:10px 14px;margin-bottom:12px;background:#131a35;border:1px solid #263159;border-radius:8px;color:#e2e8f0;font-size:14px;box-sizing:border-box;}
+    .rc-mun-search:focus{outline:none;border-color:#60a5fa;}
+    .rc-mun-list{display:flex;flex-direction:column;gap:6px;}
+    .rc-mun-item{padding:12px 14px;background:#131a35;border:1px solid #1e2749;border-radius:8px;cursor:pointer;color:#e2e8f0;font-size:14px;transition:.15s;}
+    .rc-mun-item:hover{background:#1c2650;border-color:#60a5fa;}
+  `;
+  document.head.appendChild(s);
+})();
+
 function selecionarEstado(uf){
   estadoAtual = uf;
   const info = estadosInfo[uf];
@@ -386,13 +398,14 @@ async function carregarMapaEstado(uf){
 
   if(mapEstado){ mapEstado.remove(); mapEstado=null; }
   loading.style.display='flex';
+  loading.innerHTML = '<div class="spin"></div><p>Carregando municípios...</p>';
 
-  let geojson = cacheMunicipios[uf];
-  if(!geojson){
+  let lista = cacheMunicipios[uf];
+  if(!lista){
     try{
-      const resp = await fetch(`municipios/${uf}.json`);
-      geojson = await resp.json();
-      cacheMunicipios[uf] = geojson;
+      const resp = await fetch(`/api/empresas/cidades?estado=${uf}`);
+      lista = await resp.json();
+      cacheMunicipios[uf] = lista;
     }catch(err){
       loading.innerHTML = '<p style="color:#f87171">Não foi possível carregar os municípios deste estado.</p>';
       return;
@@ -400,43 +413,38 @@ async function carregarMapaEstado(uf){
   }
 
   loading.style.display='none';
-  mapEstado = L.map('map-estado',{zoomControl:true,attributionControl:false}).setView([-14.8,-51.5],5);
-
-  const totalEstado = estadosInfo[uf].empresas;
-  const n = geojson.features.length;
-  // distribui pseudo-aleatoriamente o total do estado entre municípios (maior peso pro maior nome/1o da lista = capital)
-  geojson.features.forEach((f,i)=>{
-    const peso = i===0 ? 0.18 : Math.random();
-    f.properties._empresas = Math.max(80, Math.round((totalEstado*peso)/(n*0.6)));
-  });
-
-  geoLayerEstado = L.geoJSON(geojson,{
-    style: feature=>({
-      fillColor: corPorDensidade(feature.properties._empresas*6),
-      fillOpacity:0.85, color:'#0a0e27', weight:1
-    }),
-    onEachFeature:(feature,layer)=>{
-      const nome = feature.properties.nome;
-      const emp = feature.properties._empresas;
-      layer.bindTooltip(`<b>${nome}</b><br>${emp.toLocaleString('pt-BR')} empresas ativas`, {className:'mun-tooltip', sticky:true});
-      layer.on('mouseover', function(){ this.setStyle({fillOpacity:1, weight:2.2, color:'#93C5FD'}); });
-      layer.on('mouseout', function(){ this.setStyle({fillOpacity:0.85, weight:1, color:'#0a0e27'}); });
-      layer.on('click', ()=> selecionarMunicipio(nome));
-    }
-  }).addTo(mapEstado);
-
-  try{ mapEstado.fitBounds(geoLayerEstado.getBounds(), {padding:[20,20]}); }catch(e){}
-  setTimeout(()=>{ if(mapEstado) mapEstado.invalidateSize(); }, 150);
+  renderListaMunicipios(container, lista, '');
 }
 
-function selecionarMunicipio(mun){
-  municipioAtual = mun;
+function renderListaMunicipios(container, lista, filtro){
+  const f = (filtro||'').toLowerCase();
+  const filtrada = f ? lista.filter(m=>m.municipio.toLowerCase().includes(f)) : lista;
+  container.innerHTML = `
+    <div class="rc-mun-wrap">
+      <input type="text" id="municipio-search" class="rc-mun-search" placeholder="Buscar município..." value="${filtro||''}">
+      <div class="rc-mun-list">
+        ${filtrada.map(m=>`<div class="rc-mun-item" data-codigo="${m.codigo}" data-nome="${String(m.municipio).replace(/"/g,'&quot;')}">${m.municipio}</div>`).join('') || '<div class="cnae-empty">Nenhum município encontrado.</div>'}
+      </div>
+    </div>`;
+  const inp = document.getElementById('municipio-search');
+  inp.addEventListener('input', ()=> renderListaMunicipios(container, lista, inp.value));
+  inp.focus();
+  Array.from(container.querySelectorAll('.rc-mun-item')).forEach(item=>{
+    item.addEventListener('click', ()=> selecionarMunicipio(item.dataset.codigo, item.dataset.nome));
+  });
+}
+
+let municipioNomeAtual = null;
+function selecionarMunicipio(codigo, nome){
+  municipioAtual = codigo;
+  municipioNomeAtual = nome;
+  cnaesData = null;
   const info = estadosInfo[estadoAtual];
-  setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, mun]);
+  setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, nome]);
 
   document.getElementById('view-state-map').classList.remove('active');
   document.getElementById('view-cnaes').classList.add('active');
-  document.getElementById('cnae-page-title').textContent = `${mun} — ${estadoAtual}`;
+  document.getElementById('cnae-page-title').textContent = `${nome} — ${estadoAtual}`;
 
   abrirTelaCnaes();
 }
@@ -449,8 +457,9 @@ async function abrirTelaCnaes(){
     grid.innerHTML = `<div class="loading-overlay" style="position:static;height:200px;"><div class="spin"></div><p>Carregando classificações CNAE...</p></div>`;
     countEl.textContent = 'carregando...';
     try{
-      const resp = await fetch('cnaes.json');
-      cnaesData = await resp.json();
+      const resp = await fetch(`/api/empresas/cnaes?estado=${estadoAtual}&municipio=${municipioAtual}`);
+      const lista = await resp.json();
+      cnaesData = { itens: lista.map(r=>({c:String(r.cnae), d:r.descricao})), secoes:{} };
       popularFiltroSecoes();
     }catch(err){
       grid.innerHTML = `<div class="cnae-empty">Não foi possível carregar a lista de CNAEs.</div>`;
@@ -462,9 +471,7 @@ async function abrirTelaCnaes(){
 
 function popularFiltroSecoes(){
   const sel = document.getElementById('cnae-secao-filter');
-  const entries = Object.entries(cnaesData.secoes).sort((a,b)=>a[0].localeCompare(b[0]));
-  sel.innerHTML = '<option value="">Todas as seções</option>' +
-    entries.map(([id,desc])=>`<option value="${id}">${id} — ${desc.charAt(0)+desc.slice(1).toLowerCase()}</option>`).join('');
+  if(sel) sel.style.display = 'none';
 }
 
 function renderCnaeGrid(lista){
@@ -482,7 +489,6 @@ function renderCnaeGrid(lista){
     <div class="cnae-card" data-c="${it.c}">
       <div class="code">${it.c}</div>
       <div class="desc">${it.d}</div>
-      <div class="sec">Seção ${it.s} · ${(cnaesData.secoes[it.s]||'').split(' ').slice(0,4).join(' ')}</div>
     </div>`).join('') + (lista.length>400 ? `<div class="cnae-empty" style="grid-column:1/-1;">Mostrando 400 de ${lista.length} — refine a busca para ver mais</div>` : '');
 
   Array.from(grid.querySelectorAll('.cnae-card')).forEach(card=>{
@@ -507,18 +513,25 @@ function filtrarCnaes(){
 document.getElementById('cnae-search').addEventListener('input', filtrarCnaes);
 document.getElementById('cnae-secao-filter').addEventListener('change', filtrarCnaes);
 
-function selecionarCNAE(cnaeObj){
-  cnaeAtual = cnaeObj; // {c,d,s}
+async function selecionarCNAE(cnaeObj){
+  cnaeAtual = cnaeObj; // {c,d}
   const info = estadosInfo[estadoAtual];
-  setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, municipioAtual, `CNAE ${cnaeObj.c}`]);
-
-  const qtd = 12 + Math.floor(Math.random()*8);
-  dadosAtuais = gerarEmpresas(estadoAtual, municipioAtual, {codigo:cnaeObj.c, desc:cnaeObj.d}, qtd);
-  renderTabela(dadosAtuais);
+  setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, municipioNomeAtual, `CNAE ${cnaeObj.c}`]);
 
   document.getElementById('view-cnaes').classList.remove('active');
   document.getElementById('view-table').classList.add('active');
   document.getElementById('toolbar').classList.add('active');
+
+  const tbody = document.getElementById('tabela-body');
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;">Carregando empresas...</td></tr>';
+  try{
+    const resp = await fetch(`/api/empresas?municipio=${municipioAtual}&cnae=${cnaeObj.c}&page=1&limit=200`);
+    const data = await resp.json();
+    dadosAtuais = data.empresas || [];
+    renderTabela(dadosAtuais, data.total || dadosAtuais.length);
+  }catch(err){
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:#f87171">Erro ao buscar empresas.</td></tr>';
+  }
 }
 
 function abrirPainel(){ document.getElementById('side-panel').classList.add('open'); }
@@ -565,34 +578,35 @@ function badgePorte(p){
   return `<span class="badge ${map[p]}">${p}</span>`;
 }
 
-function renderTabela(dados){
+function renderTabela(dados, total){
   const tbody = document.getElementById('tabela-body');
   tbody.innerHTML = dados.map(e=>{
-    const enderecoQ = encodeURIComponent(`${e.rua}, ${e.bairro}, ${e.mun}, ${e.uf}`);
+    const endereco = [e.logr, e.num, e.compl].filter(Boolean).join(', ');
     const nomeQ = encodeURIComponent(e.razao);
     return `<tr>
       <td class="cnpj">${e.cnpj}</td>
       <td class="razao">${e.razao}</td>
       <td class="fantasia">${e.fantasia||'—'}</td>
       <td>${badgeTipo(e.tipo)}</td>
-      <td>${e.abertura}</td>
+      <td>${e.abertura||'—'}</td>
       <td>${badgePorte(e.porte)}</td>
-      <td class="tel">${e.tel}</td>
+      <td class="tel">${e.tel1 || e.tel2 || '—'}</td>
       <td class="email">${e.email||'—'}</td>
-      <td><div class="endereco">${e.rua}</div><div class="bairro">${e.bairro}</div></td>
-      <td>${e.cep}</td>
+      <td><div class="endereco">${endereco||'—'}</div><div class="bairro">${e.bairro||''}</div></td>
+      <td>${e.cep||'—'}</td>
       <td><div class="links-cell">
-        <a class="lbtn l-maps" href="https://www.google.com/maps/search/${enderecoQ}" target="_blank">📍 Maps</a>
-        <a class="lbtn l-wpp" href="https://wa.me/55${e.tel.replace(/\\D/g,'')}" target="_blank">💬 Wpp</a>
-        <a class="lbtn l-in" href="https://www.linkedin.com/search/results/companies/?keywords=${nomeQ}" target="_blank" title="LinkedIn">in</a>
-        <a class="lbtn l-ig" href="https://www.instagram.com/explore/tags/${e.razao.split(' ')[0].toLowerCase()}" target="_blank" title="Instagram">IG</a>
-        <a class="lbtn l-fb" href="https://www.facebook.com/search/top?q=${nomeQ}" target="_blank" title="Facebook">f</a>
+        <a class="lbtn l-maps" href="${e.maps}" target="_blank">📍 Maps</a>
+        ${e.wpp ? `<a class="lbtn l-wpp" href="${e.wpp}" target="_blank">💬 Wpp</a>` : ''}
+        <a class="lbtn l-in" href="${e.linkedin}" target="_blank" title="LinkedIn">in</a>
+        <a class="lbtn l-ig" href="${e.instagram}" target="_blank" title="Instagram">IG</a>
+        <a class="lbtn l-fb" href="${e.facebook}" target="_blank" title="Facebook">f</a>
         <a class="lbtn l-web" href="https://www.google.com/search?q=${nomeQ}" target="_blank" title="Site">🌐</a>
         <a class="lbtn l-ia" href="#" onclick="alert('Análise IA em breve para ${e.razao.replace(/'/g,"")}');return false;" title="Análise IA">IA</a>
       </div></td>
     </tr>`;
   }).join('');
-  document.getElementById('toolbar-count').textContent = `${dados.length} empresas encontradas`;
+  const totalTxt = (total && total > dados.length) ? `${dados.length} de ${total.toLocaleString('pt-BR')} empresas encontradas (refine o CNAE para ver mais)` : `${dados.length} empresas encontradas`;
+  document.getElementById('toolbar-count').textContent = totalTxt;
 }
 
 document.getElementById('filtro-empresas').addEventListener('input', (e)=>{
@@ -604,8 +618,8 @@ document.getElementById('filtro-empresas').addEventListener('input', (e)=>{
 function exportarCSV(){
   const dados = dadosAtuais.map(e=>({
     CNPJ:e.cnpj, 'Razão Social':e.razao, Fantasia:e.fantasia, Tipo:e.tipo, Abertura:e.abertura,
-    Porte:e.porte, Telefone:e.tel, Email:e.email, Endereço:e.rua, Bairro:e.bairro, CEP:e.cep,
-    Município:e.mun, UF:e.uf
+    Porte:e.porte, Telefone:(e.tel1||e.tel2||''), Email:e.email, Endereço:[e.logr,e.num,e.compl].filter(Boolean).join(', '), Bairro:e.bairro, CEP:e.cep,
+    Município:e.municipio, UF:e.uf
   }));
   const ws = XLSX.utils.json_to_sheet(dados);
   const wb = XLSX.utils.book_new();

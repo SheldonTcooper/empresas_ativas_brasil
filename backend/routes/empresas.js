@@ -141,10 +141,10 @@ router.get('/', async (req, res, next) => {
       cep:      r.cep ? `${r.cep.slice(0,5)}-${r.cep.slice(5)}` : '',
       municipio:r.municipio_nome || '',
       uf:       r.uf || '',
-      tel1: r.ddd1 && r.telefone1
-        ? `(${r.ddd1}) ${r.telefone1.slice(0,5)}-${r.telefone1.slice(5)}`  : '',
-      tel2: r.ddd2 && r.telefone2
-        ? `(${r.ddd2}) ${r.telefone2.slice(0,5)}-${r.telefone2.slice(5)}`  : '',
+      tel1: r.ddd1?.trim() && r.telefone1?.trim()
+        ? `(${r.ddd1.trim()}) ${r.telefone1.trim().slice(0,5)}-${r.telefone1.trim().slice(5)}`  : '',
+      tel2: r.ddd2?.trim() && r.telefone2?.trim()
+        ? `(${r.ddd2.trim()}) ${r.telefone2.trim().slice(0,5)}-${r.telefone2.trim().slice(5)}`  : '',
       email: (r.correio_eletronico || '').toLowerCase().trim(),
       site:  '',
       ...buildLinks(r),
@@ -215,7 +215,7 @@ router.get('/cnaes', async (req, res, next) => {
       params.push(estado);
     }
 
-    query += ` ORDER BY est.cnae_fiscal LIMIT 100`;
+    query += ` ORDER BY est.cnae_fiscal LIMIT 2000`;
 
     const { rows } = await pool.query(query, params);
 

@@ -20,7 +20,7 @@
 set -euo pipefail
 
 DB_URL="${DATABASE_URL:?Defina DATABASE_URL antes de rodar o script}"
-RF_BASE="https://dadosabertos.rfb.gov.br/CNPJ"
+RF_BASE="https://dados-abertos-rf-cnpj.casadosdados.com.br/arquivos/2026-09-14"
 WORK_DIR="${WORK_DIR:-/tmp/cnpj_fast}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -56,7 +56,7 @@ psql "$DB_URL" -c "TRUNCATE municipio, cnae"
 for arq in Municipios Cnaes; do
   dl "${RF_BASE}/${arq}.zip" "${arq}.zip"
   unzip -o -q "${arq}.zip" -d "${arq}_dir"
-  for f in "${arq}_dir"/*.csv "${arq}_dir"/*.CSV; do
+  for f in "${arq}_dir"/*; do
     [ -f "$f" ] && import_csv "$f" "$(echo "$arq" | tr '[:upper:]' '[:lower:]' | sed 's/municipios/municipio/;s/cnaes/cnae/')"
   done
   rm -rf "${arq}_dir"
@@ -70,8 +70,12 @@ for i in $(seq 0 9); do
   zip="Empresas${i}.zip"
   dl "${RF_BASE}/${zip}" "$zip"
   unzip -o -q "$zip" -d "Emp${i}_dir"
-  for f in "Emp${i}_dir"/*.csv "Emp${i}_dir"/*.CSV; do
-    [ -f "$f" ] && import_csv "$f" "empresa"
+  for f in "Emp${i}_dir"/*; do
+    if [ -f "$f" ]; then
+      log "  -> Importando $(basename "$f") -> empresa (convertendo virgula decimal)"
+      awk -F';' 'BEGIN{OFS=";"} {gsub(",", ".", $5); print}' "$f" | \
+        psql "$DB_URL" -c "\COPY empresa FROM STDIN WITH (FORMAT CSV, DELIMITER ';', ENCODING 'LATIN1', HEADER FALSE, QUOTE '\"')"
+    fi
   done
   rm -rf "Emp${i}_dir" "$zip"
   log "  ✓ Empresas parte $i"
@@ -86,7 +90,7 @@ for i in $(seq 0 9); do
   dl "${RF_BASE}/${zip}" "$zip"
   unzip -o -q "$zip" -d "Est${i}_dir"
 
-  for f in "Est${i}_dir"/*.csv "Est${i}_dir"/*.CSV; do
+  for f in "Est${i}_dir"/*; do
     [ -f "$f" ] || continue
     log "  → Filtrando ativos de $(basename "$f")..."
     # Coluna 6 (índice 5) = situacao_cadastral; '02' = Ativa
