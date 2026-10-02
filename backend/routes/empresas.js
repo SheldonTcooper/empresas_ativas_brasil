@@ -98,6 +98,13 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   if (porte === 'MEI') where.push(`s.opcao_mei = 'S'`);
   else if (COD_PORTE[porte]) where.push(`e.porte_empresa = ${p(COD_PORTE[porte])} AND s.opcao_mei IS DISTINCT FROM 'S'`);
 
+  // Regime tributário (tabela simples). "fora" = não optante: Lucro Presumido, Real ou Arbitrado
+  // (a Receita não publica mais qual dos três)
+  const regime = String(q.regime || '').toLowerCase();
+  if (regime === 'simples') where.push(`s.opcao_pelo_simples = 'S'`);
+  else if (regime === 'mei') where.push(`s.opcao_mei = 'S'`);
+  else if (regime === 'fora') where.push(`s.opcao_pelo_simples IS DISTINCT FROM 'S'`);
+
   const dias = parseInt(q.abertura_dias);
   if (dias > 0) where.push(`est.data_inicio_atividade >= CURRENT_DATE - ${p(Math.min(dias, 36500))}::int`);
 
@@ -120,7 +127,7 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   return { where, params, cnaes };
 }
 
-const FILTROS_EXTRAS = ['q', 'porte', 'abertura_dias', 'bairro', 'tipo', 'tem_telefone', 'tem_whatsapp', 'tem_email', 'sem_contador', 'secundario', 'segmento'];
+const FILTROS_EXTRAS = ['q', 'porte', 'regime', 'abertura_dias', 'bairro', 'tipo', 'tem_telefone', 'tem_whatsapp', 'tem_email', 'sem_contador', 'secundario', 'segmento'];
 
 /* ── Brasil.io fallback ─────────────────────────────────────────────── */
 function normNome(nome) {
@@ -226,7 +233,7 @@ router.get('/', async (req, res, next) => {
           est.identificador_matriz_filial,
           est.data_inicio_atividade,
           e.porte_empresa,
-          s.opcao_mei,
+          s.opcao_mei, s.opcao_pelo_simples,
           est.cnae_fiscal,
           est.tipo_logradouro, est.logradouro, est.numero,
           est.complemento,  est.bairro, est.cep, est.uf,
@@ -253,6 +260,7 @@ router.get('/', async (req, res, next) => {
         tipo:     r.identificador_matriz_filial === '1' ? 'MATRIZ' : 'FILIAL',
         abertura: fmtDate(r.data_inicio_atividade),
         porte:    r.opcao_mei === 'S' ? 'MEI' : (PORTE[r.porte_empresa] || 'NÃO INFORMADO'),
+        regime:   r.opcao_mei === 'S' ? 'MEI' : r.opcao_pelo_simples === 'S' ? 'SIMPLES' : 'FORA DO SIMPLES',
         cnae:     r.cnae_fiscal || '',
         logr:     `${r.tipo_logradouro || ''} ${r.logradouro || ''}`.trim(),
         num:      r.numero || '',

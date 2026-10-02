@@ -109,6 +109,7 @@ Parâmetros de `/api/empresas` — todos os filtros valem para a base inteira, e
 | `secundario=1` | | Também procura no CNAE secundário |
 | `q` | `alvaro`, `28.124` | Nome, fantasia, bairro, e-mail ou CNPJ (sem diferenciar acento) |
 | `porte` | `MEI`, `ME`, `EPP`, `DEMAIS` | MEI vem da tabela `simples` |
+| `regime` | `simples`, `mei`, `fora` | Optante do Simples, MEI, ou fora do Simples (Lucro Presumido/Real/Arbitrado — a Receita não publica mais qual) |
 | `abertura_dias` | `90` | Abertas nos últimos N dias |
 | `bairro`, `tipo` | `BATEL`, `matriz`/`filial` | |
 | `tem_telefone`, `tem_whatsapp`, `tem_email`, `sem_contador` | `1` | Contato válido / celular / e-mail / exclui e-mail de contabilidade |

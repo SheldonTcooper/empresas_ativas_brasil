@@ -143,6 +143,8 @@ tbody tr:last-child td{border-bottom:none;}
 .b-me{background:rgba(6,182,212,0.15);color:#22d3ee;border:1px solid rgba(6,182,212,0.3);}
 .b-media{background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);}
 .b-demais{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);}
+.b-simples{background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);}
+.b-fora{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);}
 .b-ni{background:rgba(139,147,184,0.12);color:var(--muted);border:1px solid var(--border2);}
 /* Filtros da tabela (aplicados no servidor, sobre a base inteira) */
 .filtros-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px 10px;display:none;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -265,6 +267,12 @@ th.ord.on .seta{color:var(--accent2);}
   </div>
 
   <div class="filtros-bar" id="filtros-bar">
+    <select id="f-regime" title="Regime tributário">
+      <option value="">Todos os regimes</option>
+      <option value="simples">Simples Nacional</option>
+      <option value="mei">MEI</option>
+      <option value="fora">Fora do Simples (Lucro Presumido ou Real)</option>
+    </select>
     <select id="f-porte" title="Porte">
       <option value="">Todos os portes</option>
       <option value="MEI">MEI</option>
@@ -366,7 +374,7 @@ th.ord.on .seta{color:var(--accent2);}
             <tr>
               <th>CNPJ</th><th class="ord" data-ordem="nome">Razão Social<span class="seta"></span></th><th>Fantasia</th><th>Tipo</th>
               <th class="ord" data-ordem="abertura">Abertura<span class="seta"></span></th>
-              <th class="ord" data-ordem="porte">Porte<span class="seta"></span></th><th>Telefone</th><th>E-mail</th>
+              <th class="ord" data-ordem="porte">Porte<span class="seta"></span></th><th>Regime</th><th>Telefone</th><th>E-mail</th>
               <th class="ord" data-ordem="bairro">Endereço · Bairro<span class="seta"></span></th><th>CEP</th><th>Links</th>
             </tr>
           </thead>
@@ -856,6 +864,7 @@ function paramsBusca(){
   if($f('cnae-secundario').checked) p.secundario = '1';
   const q = $f('filtro-empresas').value.trim();
   if(q) p.q = q;
+  if($f('f-regime').value)   p.regime = $f('f-regime').value;
   if($f('f-porte').value)    p.porte = $f('f-porte').value;
   if($f('f-abertura').value) p.abertura_dias = $f('f-abertura').value;
   if($f('f-bairro').value)   p.bairro = $f('f-bairro').value;
@@ -869,12 +878,12 @@ function paramsBusca(){
 }
 
 function filtrosAtivos(){
-  return !!($f('filtro-empresas').value.trim() || $f('f-porte').value || $f('f-abertura').value || $f('f-bairro').value ||
+  return !!($f('filtro-empresas').value.trim() || $f('f-regime').value || $f('f-porte').value || $f('f-abertura').value || $f('f-bairro').value ||
     $f('f-tipo').value || $f('f-tel').checked || $f('f-wpp').checked || $f('f-email').checked || $f('f-contador').checked);
 }
 
 function marcarFiltrosAtivos(){
-  ['f-porte','f-abertura','f-bairro','f-tipo'].forEach(id=> $f(id).classList.toggle('ativo', !!$f(id).value));
+  ['f-regime','f-porte','f-abertura','f-bairro','f-tipo'].forEach(id=> $f(id).classList.toggle('ativo', !!$f(id).value));
   ['f-tel','f-wpp','f-email','f-contador'].forEach(id=> $f(id).parentElement.classList.toggle('ativo', $f(id).checked));
   $f('f-limpar').style.visibility = filtrosAtivos() ? 'visible' : 'hidden';
 }
@@ -887,12 +896,12 @@ function aplicarFiltros(){
 
 function limparFiltros(recarregar = true){
   $f('filtro-empresas').value = '';
-  ['f-porte','f-abertura','f-bairro','f-tipo'].forEach(id=> $f(id).value = '');
+  ['f-regime','f-porte','f-abertura','f-bairro','f-tipo'].forEach(id=> $f(id).value = '');
   ['f-tel','f-wpp','f-email','f-contador'].forEach(id=> $f(id).checked = false);
   if(recarregar) aplicarFiltros(); else marcarFiltrosAtivos();
 }
 
-['f-porte','f-abertura','f-bairro','f-tipo','f-tel','f-wpp','f-email','f-contador']
+['f-regime','f-porte','f-abertura','f-bairro','f-tipo','f-tel','f-wpp','f-email','f-contador']
   .forEach(id=> $f(id).addEventListener('change', aplicarFiltros));
 
 let debounceBusca = null;
@@ -948,7 +957,7 @@ atualizarSetasOrdem();
    /pr/curitiba/5611201        → empresas daquele CNAE    (/pr/curitiba/hospedagem = segmento)
    ?porte=MEI&whatsapp=1&ordem=abertura&dir=desc&pagina=2 → filtros, ordem e página            */
 const slugify = v => norm(v).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-const FILTROS_URL = [['q','filtro-empresas'],['porte','f-porte'],['abertura','f-abertura'],['bairro','f-bairro'],['tipo','f-tipo']];
+const FILTROS_URL = [['q','filtro-empresas'],['regime','f-regime'],['porte','f-porte'],['abertura','f-abertura'],['bairro','f-bairro'],['tipo','f-tipo']];
 const CHECKS_URL  = [['telefone','f-tel'],['whatsapp','f-wpp'],['email','f-email'],['sem_contador','f-contador']];
 const ORDENS_VALIDAS = ['nome','abertura','porte','bairro'];
 let restaurando = false;
@@ -1062,7 +1071,7 @@ async function irParaPagina(page){
   if(page < 1 || (totalAtual && page > totalPaginas)) return;
   const seq = ++reqSeq; // ignora respostas de cliques antigos
   const tbody = document.getElementById('tabela-body');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;">Carregando empresas...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;">Carregando empresas...</td></tr>';
   try{
     const resp = await fetch(urlEmpresas(page));
     if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1076,7 +1085,7 @@ async function irParaPagina(page){
     atualizarUrl(false);
   }catch(err){
     if(seq !== reqSeq) return;
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:#f87171">Erro ao buscar empresas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;color:#f87171">Erro ao buscar empresas.</td></tr>';
   }
 }
 
@@ -1145,6 +1154,12 @@ function badgePorte(p){
   const classes = {MEI:'b-mei',ME:'b-me',EPP:'b-epp',DEMAIS:'b-demais'};
   return `<span class="badge ${classes[p]||'b-ni'}">${esc(p||'—')}</span>`;
 }
+function badgeRegime(r){
+  if(!r) return '—';
+  const classes = {MEI:'b-mei', SIMPLES:'b-simples', 'FORA DO SIMPLES':'b-fora'};
+  const titulos = {'FORA DO SIMPLES':'Não optante do Simples: Lucro Presumido, Real ou Arbitrado'};
+  return `<span class="badge ${classes[r]||'b-ni'}"${titulos[r] ? ` title="${titulos[r]}"` : ''}>${esc(r)}</span>`;
+}
 // E-mail que provavelmente é do escritório de contabilidade, não da empresa
 const RE_EMAIL_CONTADOR = /contab|contador|escritorio|assessoria/i;
 
@@ -1164,6 +1179,7 @@ function renderTabela(dados){
       <td data-label="Tipo">${badgeTipo(e.tipo)}</td>
       <td data-label="Abertura">${esc(e.abertura||'—')}</td>
       <td data-label="Porte">${badgePorte(e.porte)}</td>
+      <td data-label="Regime">${badgeRegime(e.regime)}</td>
       <td class="tel" data-label="Telefone">${esc(e.tel1 || e.tel2 || '—')}</td>
       <td class="email" data-label="E-mail"><span>${esc(e.email||'—')}${ehContador ? '<span class="email-contab" title="Provável e-mail do contador">CONTADOR?</span>' : ''}</span></td>
       <td data-label="Endereço"><div><div class="endereco">${esc(endereco||'—')}</div><div class="bairro">${esc(local)}</div></div></td>
@@ -1177,7 +1193,7 @@ function renderTabela(dados){
         ${link('l-web', `https://www.google.com/search?q=${nomeQ}`, '🌐', 'Buscar site')}
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--muted)">Nenhuma empresa encontrada${filtrosAtivos() ? ' com esses filtros' : ''}.</td></tr>`;
+  }).join('') : `<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--muted)">Nenhuma empresa encontrada${filtrosAtivos() ? ' com esses filtros' : ''}.</td></tr>`;
   atualizarPaginacao();
 }
 
@@ -1207,7 +1223,7 @@ async function exportarPlanilha(){
     const descCnae = c => cnaesData?.itens.find(x=>x.c===c)?.d || (cnaeAtual.c===c ? cnaeAtual.d : '');
     const linhas = todas.slice(0, alvo).map(e=>({
       CNPJ:e.cnpj, 'Razão Social':e.razao, Fantasia:e.fantasia, Tipo:e.tipo, Abertura:e.abertura,
-      Porte:e.porte, Telefone:e.tel1||'', 'Telefone 2':e.tel2||'', WhatsApp:e.wpp ? 'Sim' : '', 'E-mail':e.email,
+      Porte:e.porte, Regime:e.regime === 'FORA DO SIMPLES' ? 'Fora do Simples (Lucro Presumido/Real)' : (e.regime||''), Telefone:e.tel1||'', 'Telefone 2':e.tel2||'', WhatsApp:e.wpp ? 'Sim' : '', 'E-mail':e.email,
       'E-mail de contador?':e.email && RE_EMAIL_CONTADOR.test(e.email) ? 'Provável' : '',
       Endereço:[e.logr,e.num,e.compl].filter(Boolean).join(', '), Bairro:e.bairro, CEP:e.cep,
       Município:e.municipio, UF:e.uf,
