@@ -119,6 +119,9 @@ done
 rm -rf "Simples_dir" "Simples.zip"
 
 # ── Índices e estatísticas ────────────────────────────────────────────
+log "Montando a tabela de busca do painel..."
+psql "$DB_URL" -X -f "$SCRIPT_DIR/otimizar_busca.sql"
+
 log "Atualizando estatísticas do banco..."
 psql "$DB_URL" -c "ANALYZE estabelecimento; ANALYZE empresa; ANALYZE simples;"
 

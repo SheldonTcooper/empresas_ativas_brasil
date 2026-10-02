@@ -15,11 +15,11 @@ const SEGMENTOS = {
 
 // Ordenações aceitas (?ordem=nome|abertura|bairro|porte & dir=asc|desc)
 const ORDENS = {
-  // "01.363.328 FULANO" (MEI com CNPJ no nome) ordena pelo nome, não pelo número
-  nome:     `regexp_replace(e.razao_social, '^[0-9]{2}[.][0-9]{3}[.][0-9]{3} *', '')`,
+  // nome_ordem: razão social sem o CNPJ que o MEI leva no início ("01.363.328 FULANO" → "FULANO")
+  nome:     `est.nome_ordem`,
   abertura: `est.data_inicio_atividade`,
   bairro:   `NULLIF(trim(est.bairro), '')`,
-  porte:    `CASE WHEN s.opcao_mei = 'S' THEN 0 ELSE CASE e.porte_empresa WHEN '01' THEN 1 WHEN '03' THEN 2 WHEN '05' THEN 3 ELSE 4 END END`,
+  porte:    `CASE WHEN est.opcao_mei = 'S' THEN 0 ELSE CASE est.porte_empresa WHEN '01' THEN 1 WHEN '03' THEN 2 WHEN '05' THEN 3 ELSE 4 END END`,
 };
 
 // E-mail de escritório de contabilidade (não é contato da empresa)
@@ -55,7 +55,6 @@ function normTel(ddd, tel) {
              tem_email, sem_contador                                              */
 function montarFiltro(q, { soEscopo = false } = {}) {
   const where  = [
-    `est.situacao_cadastral = '02'`,
     // CNPJs ocultados a pedido do titular (LGPD) — ver routes/remocao.js
     `NOT EXISTS (SELECT 1 FROM cnpj_oculto o WHERE o.cnpj = est.cnpj_basico || est.cnpj_ordem || est.cnpj_dv)`,
   ];
@@ -76,7 +75,7 @@ function montarFiltro(q, { soEscopo = false } = {}) {
     cnaes = String(q.cnae || '').split(',').map(c => c.replace(/\D/g, '')).filter(c => c.length === 7);
     if (!cnaes.length) return { erro: 'Informe cnae (7 dígitos, ex. 5611201 ou 5611-2/01) ou segmento.' };
   }
-  const principal = `est.cnae_fiscal = ANY(${p(cnaes)}::bpchar[])`;
+  const principal = cnaes.length === 1 ? `est.cnae_fiscal = ${p(cnaes[0])}` : `est.cnae_fiscal = ANY(${p(cnaes)}::bpchar[])`;
   where.push(q.secundario === '1'
     ? `(${principal} OR string_to_array(est.cnae_fiscal_secundaria, ',') && ${p(cnaes)}::text[])`
     : principal);
@@ -86,7 +85,7 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   const texto = norm(q.q);
   if (texto) {
     const like = p(`%${texto.replace(/[\\%_]/g, '\\$&')}%`);   // % e _ digitados são literais
-    const conds = ['e.razao_social', 'est.nome_fantasia', 'est.bairro', 'est.correio_eletronico']
+    const conds = ['est.razao_social', 'est.nome_fantasia', 'est.bairro', 'est.correio_eletronico']
       .map(col => `${semAcentoSql(col)} LIKE ${like}`);
     const digitos = texto.replace(/\D/g, '');
     if (digitos.length >= 3 && /^[\d\s./-]+$/.test(texto))
@@ -95,15 +94,15 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   }
 
   const porte = String(q.porte || '').toUpperCase();
-  if (porte === 'MEI') where.push(`s.opcao_mei = 'S'`);
-  else if (COD_PORTE[porte]) where.push(`e.porte_empresa = ${p(COD_PORTE[porte])} AND s.opcao_mei IS DISTINCT FROM 'S'`);
+  if (porte === 'MEI') where.push(`est.opcao_mei = 'S'`);
+  else if (COD_PORTE[porte]) where.push(`est.porte_empresa = ${p(COD_PORTE[porte])} AND est.opcao_mei IS DISTINCT FROM 'S'`);
 
   // Regime tributário (tabela simples). "fora" = não optante: Lucro Presumido, Real ou Arbitrado
   // (a Receita não publica mais qual dos três)
   const regime = String(q.regime || '').toLowerCase();
-  if (regime === 'simples') where.push(`s.opcao_pelo_simples = 'S'`);
-  else if (regime === 'mei') where.push(`s.opcao_mei = 'S'`);
-  else if (regime === 'fora') where.push(`s.opcao_pelo_simples IS DISTINCT FROM 'S'`);
+  if (regime === 'simples') where.push(`est.opcao_pelo_simples = 'S'`);
+  else if (regime === 'mei') where.push(`est.opcao_mei = 'S'`);
+  else if (regime === 'fora') where.push(`est.opcao_pelo_simples IS DISTINCT FROM 'S'`);
 
   const dias = parseInt(q.abertura_dias);
   if (dias > 0) where.push(`est.data_inicio_atividade >= CURRENT_DATE - ${p(Math.min(dias, 36500))}::int`);
@@ -124,10 +123,7 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   if (q.tem_email === '1')    where.push(`coalesce(trim(est.correio_eletronico), '') <> ''`);
   if (q.sem_contador === '1') where.push(`coalesce(est.correio_eletronico, '') !~* '${RE_CONTADOR_SQL}'`);
 
-  // A contagem só junta empresa/simples quando algum filtro usa essas tabelas (bem mais rápido no estado inteiro)
-  const usaEmpresa = !!texto || !!COD_PORTE[porte];
-  const usaSimples = !!porte || ['simples', 'mei', 'fora'].includes(regime);
-  return { where, params, cnaes, usaEmpresa, usaSimples };
+  return { where, params, cnaes };
 }
 
 const FILTROS_EXTRAS = ['q', 'porte', 'regime', 'abertura_dias', 'bairro', 'tipo', 'tem_telefone', 'tem_whatsapp', 'tem_email', 'sem_contador', 'secundario', 'segmento'];
@@ -186,7 +182,7 @@ function fmtCNPJ(b, o, d) {
 }
 
 function buildLinks(r) {
-  const nome  = (r.nome_fantasia || r.razao_social).trim();
+  const nome  = (r.nome_fantasia || r.razao_social || '').trim();
   const end   = [r.tipo_logradouro, r.logradouro, r.numero, r.complemento, r.bairro,
                  `${r.municipio_nome} - ${r.uf}`, r.cep].filter(Boolean).join(', ');
   const nq    = encodeURIComponent(nome);
@@ -207,10 +203,9 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
+// Tabela "busca" (db/otimizar_busca.sql): só empresas ativas, já com razão social, porte e Simples/MEI
 const FROM_EMPRESAS = `
-  FROM estabelecimento est
-  JOIN empresa e        ON e.cnpj_basico = est.cnpj_basico
-  LEFT JOIN simples s   ON s.cnpj_basico = est.cnpj_basico`;
+  FROM busca est`;
 
 /* ── GET /api/empresas ── lista paginada com filtros (ver montarFiltro) ── */
 router.get('/', async (req, res, next) => {
@@ -231,12 +226,12 @@ router.get('/', async (req, res, next) => {
     const [data, count] = await Promise.all([
       pool.query(`
         SELECT
-          e.cnpj_basico, est.cnpj_ordem, est.cnpj_dv,
-          e.razao_social,   est.nome_fantasia,
+          est.cnpj_basico, est.cnpj_ordem, est.cnpj_dv,
+          est.razao_social, est.nome_fantasia,
           est.identificador_matriz_filial,
           est.data_inicio_atividade,
-          e.porte_empresa,
-          s.opcao_mei, s.opcao_pelo_simples,
+          est.porte_empresa,
+          est.opcao_mei, est.opcao_pelo_simples,
           est.cnae_fiscal,
           est.tipo_logradouro, est.logradouro, est.numero,
           est.complemento,  est.bairro, est.cep, est.uf,
@@ -246,14 +241,11 @@ router.get('/', async (req, res, next) => {
         ${FROM_EMPRESAS}
         LEFT JOIN municipio m ON m.codigo = est.municipio
         WHERE ${where}
-        ORDER BY ${ORDENS[ordem]} ${dir} NULLS LAST, est.cnpj_basico, est.cnpj_ordem
+        ORDER BY ${ORDENS[ordem]} ${dir}${ordem === 'nome' ? '' : ' NULLS LAST'}, est.cnpj_basico ${dir}, est.cnpj_ordem ${dir}
         LIMIT $${nP + 1} OFFSET $${nP + 2}
       `, [...filtro.params, lim, offset]),
 
-      pool.query(`SELECT COUNT(*) AS total FROM estabelecimento est
-        ${filtro.usaEmpresa ? 'JOIN empresa e ON e.cnpj_basico = est.cnpj_basico' : ''}
-        ${filtro.usaSimples ? 'LEFT JOIN simples s ON s.cnpj_basico = est.cnpj_basico' : ''}
-        WHERE ${where}`, filtro.params),
+      pool.query(`SELECT COUNT(*) AS total ${FROM_EMPRESAS} WHERE ${where}`, filtro.params),
     ]);
 
     const empresas = data.rows.map(r => {
@@ -318,7 +310,7 @@ router.get('/bairros', async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT upper(trim(est.bairro)) AS bairro, COUNT(*) AS total
-      FROM estabelecimento est
+      FROM busca est
       WHERE ${filtro.where.join(' AND ')} AND coalesce(trim(est.bairro), '') <> ''
       GROUP BY 1
       ORDER BY total DESC, bairro
@@ -349,11 +341,10 @@ router.get('/cidades', async (req, res, next) => {
 
 function listarCidades(estado) {
   return comCache(`cidades:${estado}`, async () => (await pool.query(`
-    SELECT DISTINCT est.municipio AS codigo, COALESCE(m.descricao, est.municipio::text) AS municipio
-    FROM estabelecimento est
-    LEFT JOIN municipio m ON m.codigo = est.municipio
-    WHERE est.uf = $1 AND est.situacao_cadastral = '02'
-    ORDER BY municipio
+    SELECT d.codigo, COALESCE(m.descricao, d.codigo::text) AS municipio
+    FROM (SELECT DISTINCT municipio AS codigo FROM busca WHERE uf = $1) d
+    LEFT JOIN municipio m ON m.codigo = d.codigo
+    ORDER BY 2
   `, [estado])).rows.map(r => ({ municipio: r.municipio, codigo: r.codigo })));
 }
 
@@ -374,19 +365,19 @@ router.get('/cnaes', async (req, res, next) => {
 function listarCnaes({ municipio, estado }) {
   const [col, valor] = municipio ? ['est.municipio', municipio] : ['est.uf', estado];
   return comCache(`cnaes:${col}:${valor}`, async () => {
-    // Contagem lida só do índice (municipio|uf, cnae_fiscal, situacao_cadastral);
+    // Contagem lida só do índice (municipio|uf, cnae_fiscal, …) da tabela busca;
     // os CNPJs ocultados (LGPD) são poucos e descontados à parte
     const [contagem, ocultos, descricoes] = await Promise.all([
       pool.query(`
         SELECT est.cnae_fiscal, COUNT(*) AS total
-        FROM estabelecimento est
-        WHERE ${col} = $1 AND est.situacao_cadastral = '02'
+        FROM busca est
+        WHERE ${col} = $1
         GROUP BY est.cnae_fiscal`, [valor]),
       pool.query(`
         SELECT est.cnae_fiscal, COUNT(*) AS total
         FROM cnpj_oculto o
-        JOIN estabelecimento est ON est.cnpj_basico = substr(o.cnpj, 1, 8) AND est.cnpj_ordem = substr(o.cnpj, 9, 4) AND est.cnpj_dv = substr(o.cnpj, 13, 2)
-        WHERE ${col} = $1 AND est.situacao_cadastral = '02'
+        JOIN busca est ON est.cnpj_basico = substr(o.cnpj, 1, 8) AND est.cnpj_ordem = substr(o.cnpj, 9, 4) AND est.cnpj_dv = substr(o.cnpj, 13, 2)
+        WHERE ${col} = $1
         GROUP BY est.cnae_fiscal`, [valor]),
       descricoesCnae(),
     ]);

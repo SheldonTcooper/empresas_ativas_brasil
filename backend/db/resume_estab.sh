@@ -35,5 +35,8 @@ for i in 0 1 2 3 4 5 6 7 8 9; do
   log "Estabelecimentos parte $i concluida"
 done
 
+log "Montando a tabela de busca do painel..."
+psql "$DB_URL" -X -f "$(dirname "$0")/otimizar_busca.sql"
+
 log "ESTABELECIMENTOS COMPLETO!"
 psql "$DB_URL" -c "SELECT 'empresa' t, count(*) FROM empresa UNION ALL SELECT 'estabelecimento', count(*) FROM estabelecimento UNION ALL SELECT 'municipio', count(*) FROM municipio UNION ALL SELECT 'cnae', count(*) FROM cnae;"

@@ -8,11 +8,10 @@ const ESTADOS = require('../lib/estados');
 let totais = null;
 function calcularTotais() {
   return comCache('estados:totais', async () => {
-    // Duas consultas que usam só índices: (uf, situacao_cadastral, …) e (data_inicio_atividade)
+    // Duas consultas que usam só índices da tabela busca (só ativas): (uf, …) e (data_inicio_atividade)
     const [ativas, aberturas] = await Promise.all([
-      pool.query(`SELECT uf, COUNT(*) AS n FROM estabelecimento WHERE situacao_cadastral = '02' GROUP BY uf`),
-      pool.query(`SELECT uf, COUNT(*) AS n FROM estabelecimento
-                  WHERE data_inicio_atividade >= CURRENT_DATE - 30 AND situacao_cadastral = '02' GROUP BY uf`),
+      pool.query(`SELECT uf, COUNT(*) AS n FROM busca GROUP BY uf`),
+      pool.query(`SELECT uf, COUNT(*) AS n FROM busca WHERE data_inicio_atividade >= CURRENT_DATE - 30 GROUP BY uf`),
     ]);
     const novas = Object.fromEntries(aberturas.rows.map(r => [r.uf, parseInt(r.n)]));
     totais = Object.fromEntries(ativas.rows.map(r => [r.uf, { ativas: parseInt(r.n), aberturas_30d: novas[r.uf] || 0 }]));

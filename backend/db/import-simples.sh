@@ -50,5 +50,8 @@ psql "$DB_URL" -f "$SCRIPT_DIR/schema.sql"
 psql "$DB_URL" -c "ANALYZE simples;"
 rm -rf Simples_dir Simples.zip
 
+log "Reconstruindo a tabela de busca (razão social, porte e Simples/MEI juntos)..."
+psql "$DB_URL" -X -f "$SCRIPT_DIR/otimizar_busca.sql"
+
 log "✅ Simples importado."
 psql "$DB_URL" -c "SELECT COUNT(*) AS cnpjs_no_simples, COUNT(*) FILTER (WHERE opcao_mei = 'S') AS mei FROM simples;"
