@@ -9,7 +9,8 @@ const fs = require('fs');
 const router = require('express').Router();
 const { slug } = require('../lib/db');
 const ESTADOS = require('../lib/estados');
-const { SEGMENTOS, listarCidades, listarCnaes } = require('./empresas');
+const { listarCidades, listarCnaes } = require('./empresas');
+const { SEGMENTOS, prepararSegmentos } = require('../lib/segmentos');
 
 const SITE_URL = (process.env.SITE_URL || 'https://www.empresasativas.online').replace(/\/$/, '');
 const PUBLIC = path.join(__dirname, '../../public');
@@ -50,8 +51,9 @@ async function resolver(ufParam, cidadeParam, atividadeParam) {
     r.atividade = { nome: c.descricao, detalhe: `CNAE ${fmtCnae(c.cnae)}` };
     r.total = c.total;
   } else if (SEGMENTOS[atividadeParam]) {
+    await prepararSegmentos();
     const s = SEGMENTOS[atividadeParam];
-    r.atividade = { nome: s.nome, detalhe: `CNAEs ${s.cnaes.map(fmtCnae).join(', ')}` };
+    r.atividade = { nome: s.nome, detalhe: s.cnaes.length <= 6 ? `CNAEs ${s.cnaes.map(fmtCnae).join(', ')}` : `${s.cnaes.length} atividades CNAE` };
     r.total = cnaes.filter(x => s.cnaes.includes(x.cnae)).reduce((t, x) => t + x.total, 0);
   } else return null;
   return r;

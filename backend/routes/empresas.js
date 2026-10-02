@@ -7,12 +7,8 @@ const { VALIDADE_DIAS } = require('../lib/enriquecer');
 const PORTE = { '00':'NÃO INFORMADO','01':'ME','03':'EPP','05':'DEMAIS' };
 const COD_PORTE = { 'ME':'01', 'EPP':'03', 'DEMAIS':'05' };
 
-// Segmentos amigáveis = grupos de CNAEs
-const SEGMENTOS = {
-  hospedagem:     { nome: 'Hospedagem',     cnaes: ['5510801','5510802','5510803','5590601','5590602','5590603','5590699'] },
-  bancos:         { nome: 'Bancos',         cnaes: ['6421200','6422100','6423900','6431000','6432800','6433600'] },
-  securitizadora: { nome: 'Securitizadora', cnaes: ['6492100'] },
-};
+// Segmentos amigáveis = grupos de CNAEs (lib/segmentos.js)
+const { SEGMENTOS, prepararSegmentos } = require('../lib/segmentos');
 
 // Ordenações aceitas (?ordem=nome|abertura|bairro|porte & dir=asc|desc)
 const ORDENS = {
@@ -72,6 +68,7 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   if (q.segmento) {
     cnaes = SEGMENTOS[String(q.segmento).toLowerCase()]?.cnaes;
     if (!cnaes) return { erro: `Segmento inválido. Use: ${Object.keys(SEGMENTOS).join(', ')}` };
+    if (!cnaes.length) cnaes = ['0000000'];   // segmento sem atividades nesta base: resultado vazio
   } else {
     cnaes = String(q.cnae || '').split(',').map(c => c.replace(/\D/g, '')).filter(c => c.length === 7);
     if (!cnaes.length) return { erro: 'Informe cnae (7 dígitos, ex. 5611201 ou 5611-2/01) ou segmento.' };
@@ -235,6 +232,7 @@ const FROM_EMPRESAS = `
 /* ── GET /api/empresas ── lista paginada com filtros (ver montarFiltro) ── */
 router.get('/', async (req, res, next) => {
   const { page = 1, limit = 50, municipioNome = '' } = req.query;
+  if (req.query.segmento) { try { await prepararSegmentos(); } catch (err) { return next(err); } }
   const filtro = montarFiltro(req.query);
   if (filtro.erro) return res.status(400).json({ error: filtro.erro });
 
@@ -341,6 +339,7 @@ router.get('/', async (req, res, next) => {
 
 /* ── GET /api/empresas/bairros?municipio=…&cnae=… ── bairros do escopo, por volume ── */
 router.get('/bairros', async (req, res, next) => {
+  if (req.query.segmento) { try { await prepararSegmentos(); } catch (err) { return next(err); } }
   const filtro = montarFiltro(req.query, { soEscopo: true });
   if (filtro.erro) return res.status(400).json({ error: filtro.erro });
   try {
@@ -359,8 +358,13 @@ router.get('/bairros', async (req, res, next) => {
 });
 
 /* ── GET /api/empresas/segmentos ── grupos de CNAE prontos ── */
-router.get('/segmentos', (_req, res) => {
-  res.json(Object.entries(SEGMENTOS).map(([id, s]) => ({ id, nome: s.nome, cnaes: s.cnaes })));
+router.get('/segmentos', async (_req, res, next) => {
+  try {
+    await prepararSegmentos();
+    res.json(Object.entries(SEGMENTOS).map(([id, s]) => ({ id, nome: s.nome, cnaes: s.cnaes })));
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* ── GET /api/cidades?estado=SP ── lista cidades por estado ── */

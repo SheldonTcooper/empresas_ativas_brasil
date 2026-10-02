@@ -202,7 +202,16 @@ th.ord.on .seta{color:var(--accent2);}
 .seg-card{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(59,130,246,.05));border:1px solid rgba(59,130,246,.4);padding:12px 14px;border-radius:8px;cursor:pointer;transition:.15s;}
 .seg-card:hover{border-color:var(--accent2);transform:translateY(-2px);}
 .seg-card .nome{font-weight:700;color:#fff;font-size:14px;}
-.seg-card .cods{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4;}
+.seg-card .cods{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4;font-weight:600;}
+.seg-card.vazio{opacity:.4;}
+.segmentos-bar{display:none;align-items:center;gap:6px;padding:8px 24px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap;scrollbar-width:thin;}
+.filtros-bar.active + .segmentos-bar{display:flex;}
+.segmentos-bar .rotulo{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;}
+.chip{flex:0 0 auto;background:var(--panel);border:1px solid var(--border2);color:var(--text);padding:6px 11px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit;}
+.chip small{color:var(--muted);font-weight:700;margin-left:6px;font-size:11px;}
+.chip:hover{border-color:var(--accent);}
+.chip.ativo{background:var(--accent);border-color:var(--accent);color:#fff;cursor:default;}
+.chip.ativo small{color:#dbeafe;}
 .cnae-card .qtd{font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:600;}
 .rc-mun-item.estado-todo{border-color:rgba(59,130,246,.5);background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(59,130,246,.05));font-weight:700;}
 .pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0 6px;color:var(--muted);font-size:12.5px;}
@@ -253,6 +262,7 @@ th.ord.on .seta{color:var(--accent2);}
   .tbtn{padding:8px 10px;font-size:12px;}
   .toolbar-count{width:100%;margin-left:0;}
   .filtros-bar{padding:6px 12px 8px;flex-wrap:nowrap;overflow-x:auto;}
+  .segmentos-bar{padding:6px 12px;}
   .filtros-bar select, .chk, .link-btn{flex:0 0 auto;white-space:nowrap;max-width:none;}
   .side-panel{width:100%;top:auto;height:62%;border-left:0;border-top:1px solid var(--border);transform:translateY(100%);border-radius:14px 14px 0 0;}
   .side-panel.open{transform:translateY(0);}
@@ -343,6 +353,7 @@ th.ord.on .seta{color:var(--accent2);}
     <label class="chk" title="Esconde e-mails com contab, contador, escritório ou assessoria"><input type="checkbox" id="f-contador"> Sem e-mail de contador</label>
     <button class="link-btn" id="f-limpar" onclick="limparFiltros()">Limpar filtros</button>
   </div>
+  <div class="segmentos-bar" id="segmentos-bar" aria-label="Trocar de segmento"></div>
 
   <div class="content">
 
@@ -839,8 +850,7 @@ function paramsEscopo(){
 
 /* ===================== SEGMENTOS ===================== */
 let segmentos = null;
-async function renderSegmentos(){
-  const grid = document.getElementById('seg-grid');
+async function carregarSegmentos(){
   if(!segmentos){
     try{
       const resp = await fetch('/api/empresas/segmentos');
@@ -848,25 +858,75 @@ async function renderSegmentos(){
       segmentos = await resp.json();
     }catch(err){ segmentos = []; }
   }
+  return segmentos;
+}
+
+// Empresas de cada segmento no lugar escolhido (soma dos CNAEs já carregados para esse lugar)
+function contarSegmentos(){
+  const porCnae = new Map((cnaesData?.itens || []).map(it=> [it.c, it.total || 0]));
+  return (segmentos || [])
+    .map(s=> ({ ...s, total: s.cnaes.reduce((t, c)=> t + (porCnae.get(c) || 0), 0) }))
+    .sort((a, b)=> (b.total - a.total) || a.nome.localeCompare(b.nome));
+}
+const fmtQtd = n => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'empresa' : 'empresas'}`;
+
+async function renderSegmentos(){
+  await carregarSegmentos();
+  const grid = document.getElementById('seg-grid');
   grid.previousElementSibling.style.display = grid.style.display = segmentos.length ? '' : 'none';
-  grid.innerHTML = segmentos.map(s=>`
-    <div class="seg-card" data-id="${esc(s.id)}">
+  const temContagem = !!cnaesData;
+  grid.innerHTML = contarSegmentos().map(s=> `
+    <div class="seg-card${temContagem && !s.total ? ' vazio' : ''}" data-id="${esc(s.id)}">
       <div class="nome">${esc(s.nome)}</div>
-      <div class="cods">${s.cnaes.map(fmtCnae).join(' · ')}</div>
+      <div class="cods">${temContagem ? fmtQtd(s.total) : `${s.cnaes.length} atividades`}</div>
     </div>`).join('');
   Array.from(grid.querySelectorAll('.seg-card')).forEach(card=>{
     card.addEventListener('click', ()=>{
-      const s = segmentos.find(x=>x.id===card.dataset.id);
+      const s = segmentos.find(x=> x.id === card.dataset.id);
       selecionarAtividade({ seg: s.id, d: s.nome, cnaes: s.cnaes });
     });
   });
+}
+
+// Barra de segmentos na tabela: troca de segmento sem sair da lista
+function renderBarraSegmentos(){
+  const barra = document.getElementById('segmentos-bar');
+  if(!segmentos || !segmentos.length || !cnaeAtual){ barra.innerHTML = ''; return; }
+  const lista = contarSegmentos().filter(s=> !cnaesData || s.total > 0 || s.id === cnaeAtual.seg);
+  const chipCnae = cnaeAtual.seg ? ''
+    : `<button class="chip ativo" disabled title="${esc(cnaeAtual.d || '')}">CNAE ${fmtCnae(cnaeAtual.c)}</button>`;
+  barra.innerHTML = `<span class="rotulo">Segmentos</span>${chipCnae}` + lista.map(s=>
+    `<button class="chip${s.id === cnaeAtual.seg ? ' ativo' : ''}" data-seg="${esc(s.id)}">${esc(s.nome)}${cnaesData ? `<small>${s.total.toLocaleString('pt-BR')}</small>` : ''}</button>`
+  ).join('');
+  const ativo = barra.querySelector('.chip.ativo');
+  if(ativo && ativo.scrollIntoView) ativo.scrollIntoView({ block:'nearest', inline:'nearest' });
+}
+document.getElementById('segmentos-bar').addEventListener('click', ev=>{
+  const chip = ev.target.closest('button[data-seg]');
+  if(chip) trocarSegmento(chip.dataset.seg);
+});
+
+// Troca o segmento mantendo o lugar e os filtros escolhidos (o bairro volta para "todos")
+async function trocarSegmento(id){
+  const s = (segmentos || []).find(x=> x.id === id);
+  if(!s || (cnaeAtual && cnaeAtual.seg === id)) return;
+  cnaeAtual = { seg: s.id, d: s.nome, cnaes: s.cnaes };
+  const info = estadosInfo[estadoAtual];
+  const sec = document.getElementById('cnae-secundario').checked ? ' (+ secundário)' : '';
+  setCrumb(['Brasil', `${estadoAtual} — ${info.nome}`, municipioNomeAtual, rotuloAtividade() + sec]);
+  $f('f-bairro').value = '';
+  marcarFiltrosAtivos();
+  renderBarraSegmentos();
+  carregarBairros();
+  totalAtual = 0; paginaAtual = 1;
+  atualizarUrl(true);
+  await irParaPagina(1);
 }
 
 /* ===================== CNAEs ===================== */
 async function abrirTelaCnaes(){
   const grid = document.getElementById('cnae-grid');
   const countEl = document.getElementById('cnae-count');
-  renderSegmentos();
 
   if(!cnaesData){
     grid.innerHTML = `<div class="loading-overlay" style="position:static;height:200px;"><div class="spin"></div><p>Carregando classificações CNAE...</p></div>`;
@@ -883,10 +943,12 @@ async function abrirTelaCnaes(){
       popularFiltroSecoes();
     }catch(err){
       grid.innerHTML = `<div class="cnae-empty">Não foi possível carregar a lista de CNAEs.</div>`;
+      renderSegmentos();
       return;
     }
   }
   filtrarCnaes();
+  await renderSegmentos();   // com a quantidade de empresas de cada segmento neste lugar
 }
 
 function popularFiltroSecoes(){
@@ -977,6 +1039,7 @@ async function selecionarAtividade(atividade, estadoUrl = null){
   atualizarSetasOrdem();
   marcarFiltrosAtivos();
   carregarBairros();
+  carregarSegmentos().then(renderBarraSegmentos);
   totalAtual = 0;
   paginaAtual = pagina;
   atualizarUrl(!estadoUrl);
