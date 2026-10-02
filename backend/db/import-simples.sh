@@ -45,7 +45,7 @@ for f in Simples_dir/*; do
 done
 
 # A view v_empresa_ativa depende de simples: sai junto e o schema.sql recria
-psql "$DB_URL" -c "BEGIN; DROP VIEW IF EXISTS v_empresa_ativa; DROP TABLE simples; ALTER TABLE simples_novo RENAME TO simples; COMMIT;"
+psql "$DB_URL" -c "BEGIN; DROP VIEW IF EXISTS v_empresa_ativa; DROP TABLE simples; ALTER TABLE simples_novo RENAME TO simples; ALTER INDEX simples_novo_pkey RENAME TO simples_pkey; COMMIT;"
 psql "$DB_URL" -f "$SCRIPT_DIR/schema.sql"
 psql "$DB_URL" -c "ANALYZE simples;"
 rm -rf Simples_dir Simples.zip

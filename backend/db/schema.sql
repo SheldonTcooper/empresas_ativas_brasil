@@ -140,37 +140,9 @@ CREATE TABLE IF NOT EXISTS cnpj_oculto (
 -- ÍNDICES — críticos para performance das queries
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Busca principal: município + CNAE + situação
-CREATE INDEX IF NOT EXISTS idx_est_mun_cnae_sit
-  ON estabelecimento (municipio, cnae_fiscal, situacao_cadastral);
-
--- Busca por UF
-CREATE INDEX IF NOT EXISTS idx_est_uf_cnae_sit
-  ON estabelecimento (uf, cnae_fiscal, situacao_cadastral);
-
--- Data de abertura: filtro "abertas nos últimos N dias" e aberturas do mês no mapa
-CREATE INDEX IF NOT EXISTS idx_est_abertura
-  ON estabelecimento (data_inicio_atividade);
-
--- CNAE secundário ("5510801,5590699" → array) — a API usa exatamente esta expressão
-CREATE INDEX IF NOT EXISTS idx_est_cnae_sec
-  ON estabelecimento USING gin ((string_to_array(cnae_fiscal_secundaria, ',')));
-
--- Lookup por razão social
-CREATE INDEX IF NOT EXISTS idx_empresa_razao_trgm
-  ON empresa USING gin (razao_social gin_trgm_ops);
-
--- Lookup por CNAE
-CREATE INDEX IF NOT EXISTS idx_est_cnae
-  ON estabelecimento (cnae_fiscal);
-
--- Situação cadastral
-CREATE INDEX IF NOT EXISTS idx_est_situacao
-  ON estabelecimento (situacao_cadastral);
-
--- Join empresa ↔ estabelecimento
-CREATE INDEX IF NOT EXISTS idx_est_basico
-  ON estabelecimento (cnpj_basico);
+-- O painel consulta a tabela "busca" (db/otimizar_busca.sql), que tem os próprios
+-- índices. As tabelas da Receita ficam só com a chave primária: a consulta por
+-- CNPJ usa o PK, e menos índices deixam a importação mensal bem mais rápida.
 
 -- Sócios por CNPJ
 CREATE INDEX IF NOT EXISTS idx_socio_basico
