@@ -6,7 +6,7 @@ const { pool } = require('./db');
 const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
 const MODELO      = process.env.GROQ_MODELO_BUSCA || 'openai/gpt-oss-120b';
 const VALIDADE_DIAS = 90;
-const MAX_SIMULTANEAS = 2;
+const MAX_SIMULTANEAS = 1;   // cota do Groq gratuito: uma pesquisa por vez
 
 // Sites que listam empresas (não são o site da empresa)
 const AGREGADORES = /(^|\.)(cnpj\.biz|casadosdados\.com\.br|econodata\.com\.br|solutudo\.com\.br|guiamais\.com\.br|telelistas\.net|apontador\.com\.br|cnpja\.com|empresascnpj\.com|consultacnpj\.com|cnpjs\.rocks|informecadastral\.com\.br|serasaexperian\.com\.br|jusbrasil\.com\.br|google\.[a-z.]+|bing\.com|exa\.ai|yelp\.[a-z.]+|tripadvisor\.[a-z.]+|ifood\.com\.br|wikipedia\.org|youtube\.com|tiktok\.com|twitter\.com|x\.com|instagram\.com|facebook\.com|fb\.com|linkedin\.com|wa\.me|whatsapp\.com|gov\.br)$/i;
@@ -104,7 +104,32 @@ class LimiteGroq extends Error {
   constructor(segundos) { super('Limite de consultas do Groq atingido. Tente de novo em instantes.'); this.status = 429; this.retryAfter = segundos; }
 }
 
+// "42.202s" / "577ms" / "1m3s" (cabeçalhos do Groq) → segundos
+function segundos(v) {
+  const s = String(v || '');
+  const m = s.match(/(?:(\d+)m(?!s))?(?:([\d.]+)s)?(?:([\d.]+)ms)?/);
+  const total = (parseFloat(m?.[1]) || 0) * 60 + (parseFloat(m?.[2]) || 0) + (parseFloat(m?.[3]) || 0) / 1000;
+  return total > 0 ? total : null;
+}
+
+const ESPERA_MAX = 70;     // a cota de tokens do Groq gratuito zera a cada minuto
+const TENTATIVAS = 4;
+const dormir = s => new Promise(r => setTimeout(r, s * 1000));
+
+/* No plano gratuito cada pesquisa passa da cota de tokens do minuto: o Groq responde 429
+   e diz quanto esperar. Aqui a espera é feita no servidor, sem erro para o usuário. */
 async function consultarGroq(descricao) {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await chamarGroq(descricao);
+    } catch (err) {
+      if (!(err instanceof LimiteGroq) || tentativa >= TENTATIVAS || err.retryAfter > ESPERA_MAX) throw err;
+      await dormir(err.retryAfter + 1);
+    }
+  }
+}
+
+async function chamarGroq(descricao) {
   if (!process.env.GROQ_API_KEY) { const e = new Error('GROQ_API_KEY não configurada no servidor'); e.status = 503; throw e; }
   const resp = await fetch(GROQ_URL, {
     method: 'POST',
@@ -120,7 +145,11 @@ async function consultarGroq(descricao) {
     }),
     signal: AbortSignal.timeout(90000),
   });
-  if (resp.status === 429) throw new LimiteGroq(parseInt(resp.headers.get('retry-after')) || 30);
+  if (resp.status === 429) {
+    const espera = segundos(resp.headers.get('retry-after') && `${resp.headers.get('retry-after')}s`)
+      || segundos(resp.headers.get('x-ratelimit-reset-tokens')) || 60;
+    throw new LimiteGroq(Math.ceil(espera));
+  }
   const dados = await resp.json().catch(() => ({}));
   if (!resp.ok) { const e = new Error(`Groq ${resp.status}: ${dados?.error?.message || 'erro'}`); e.status = 502; throw e; }
   return dados.choices?.[0]?.message || {};
