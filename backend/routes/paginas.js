@@ -179,4 +179,22 @@ function paginaLegal(arquivo) {
 router.get('/privacidade', paginaLegal('privacidade.html'));
 router.get('/termos', paginaLegal('termos.html'));
 
+/* Pré-aquece o cache (municípios e CNAEs de cada estado e da capital), um estado por vez,
+   para que mapa, listas e sitemap respondam rápido já na primeira visita. */
+async function aquecerCache() {
+  const t0 = Date.now();
+  for (const e of ESTADOS) {
+    try {
+      const cidades = await listarCidades(e.uf);
+      await listarCnaes({ estado: e.uf });
+      const capital = cidades.find(c => slug(c.municipio) === slug(e.capital));
+      if (capital) await listarCnaes({ municipio: capital.codigo });
+    } catch (err) {
+      console.error(`[cache] ${e.uf}:`, err.message);
+    }
+  }
+  console.log(`[cache] aquecido em ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+}
+
 module.exports = router;
+module.exports.aquecerCache = aquecerCache;

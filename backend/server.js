@@ -65,6 +65,11 @@ app.use((err, req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`✓ API rodando na porta ${PORT}`);
-  // Pré-calcula os totais por estado (varre a base inteira) para o mapa já abrir com números reais
-  require('./routes/estados').calcularTotais().catch(err => console.error('[estados] totais:', err.message));
+  // Pré-calcula totais por estado e listas de municípios/CNAEs para tudo abrir rápido;
+  // depois que o cache (12h) vence, a passada seguinte atualiza em segundo plano
+  const aquecer = () => require('./routes/estados').calcularTotais()
+    .catch(err => console.error('[estados] totais:', err.message))
+    .then(() => require('./routes/paginas').aquecerCache());
+  aquecer();
+  setInterval(aquecer, 12.5 * 60 * 60 * 1000).unref();
 });
