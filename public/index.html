@@ -62,15 +62,50 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Ro
 
 /* MAPA */
 #map{width:100%;height:100%;background:var(--bg);}
+/* Página inicial: notícias | mapa fixo | notícias */
+.home{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;height:100%;}
+.mapa-area{position:relative;min-width:0;}
+.noticias{display:flex;flex-direction:column;min-height:0;background:var(--bg2);}
+.noticias:first-child{border-right:1px solid var(--border);}
+.noticias:last-child{border-left:1px solid var(--border);}
+.noticias h3{display:flex;align-items:center;gap:8px;padding:14px 16px 11px;font-size:11px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);}
+.ao-vivo{width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:pulsar 1.8s infinite;}
+@keyframes pulsar{70%{box-shadow:0 0 0 7px rgba(239,68,68,0);}100%{box-shadow:0 0 0 0 rgba(239,68,68,0);}}
+.ticker{flex:1;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(transparent,#000 6%,#000 94%,transparent);}
+.trilho{animation:subir var(--dur,140s) linear infinite;}
+.ticker:hover .trilho,.ticker:focus-within .trilho{animation-play-state:paused;}
+@keyframes subir{to{transform:translateY(-50%);}}
+.noticia{display:block;padding:12px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);}
+.noticia:hover{background:var(--panel);}
+.noticia .meta{font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+.noticia .tit{font-size:13px;line-height:1.38;}
+.noticias.vazia .ticker::after{content:"Sem notícias no momento";display:block;padding:16px;color:var(--muted2);font-size:12px;}
+.faixa-noticias{display:none;position:absolute;left:0;right:0;bottom:0;height:36px;overflow:hidden;background:var(--bg2);border-top:1px solid var(--border);z-index:450;}
+.faixa-trilho{display:inline-flex;white-space:nowrap;height:100%;align-items:center;animation:lado var(--dur,200s) linear infinite;}
+.faixa-noticias:hover .faixa-trilho{animation-play-state:paused;}
+@keyframes lado{to{transform:translateX(-50%);}}
+.item-faixa{color:var(--text);text-decoration:none;font-size:12.5px;padding:0 22px;border-right:1px solid var(--border2);}
+.item-faixa b{color:var(--accent2);font-weight:700;margin-right:6px;}
+@media (max-width: 1200px){
+  .home{grid-template-columns:minmax(0,1fr);}
+  .noticias{display:none;}
+  .faixa-noticias{display:block;}
+}
+@media (prefers-reduced-motion: reduce){
+  .trilho,.faixa-trilho,.ao-vivo{animation:none;}
+  .ticker{overflow-y:auto;}
+  .faixa-noticias{overflow-x:auto;}
+}
 .leaflet-container{background:var(--bg) !important;}
 .map-legend{position:absolute;bottom:20px;left:20px;background:rgba(17,24,52,0.95);border:1px solid var(--border2);padding:14px 16px;border-radius:10px;z-index:400;backdrop-filter:blur(6px);}
 .map-legend h4{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .legend-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);margin-bottom:5px;}
 .legend-row:last-child{margin-bottom:0;}
 .legend-swatch{width:22px;height:13px;border-radius:3px;}
-.map-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:12.5px;z-index:400;background:rgba(17,24,52,0.85);padding:6px 16px;border-radius:20px;border:1px solid var(--border);}
+.map-hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:12px;z-index:400;background:rgba(17,24,52,0.85);padding:5px 14px;border-radius:20px;border:1px solid var(--border);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+.leaflet-interactive:focus{outline:none;}
 .state-tooltip{background:var(--panel) !important;border:1px solid var(--border2) !important;color:var(--text) !important;font-size:12px !important;border-radius:6px !important;box-shadow:0 4px 16px rgba(0,0,0,0.4) !important;}
-.state-label{background:transparent;border:none;box-shadow:none;color:#fff;font-weight:800;font-size:11px;text-shadow:0 1px 3px rgba(0,0,0,0.8);text-align:center;}
+.state-label{background:transparent;border:none;box-shadow:none;color:#fff;font-weight:900;font-size:11px;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 4px #000;text-align:center;}
 
 /* PAINEL LATERAL (municipios / cnaes) */
 .side-panel{position:absolute;top:0;right:0;bottom:0;width:400px;background:var(--bg2);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .35s ease;z-index:500;display:flex;flex-direction:column;box-shadow:-8px 0 24px rgba(0,0,0,0.3);}
@@ -222,7 +257,7 @@ th.ord.on .seta{color:var(--accent2);}
   .side-panel{width:100%;top:auto;height:62%;border-left:0;border-top:1px solid var(--border);transform:translateY(100%);border-radius:14px 14px 0 0;}
   .side-panel.open{transform:translateY(0);}
   .map-legend{display:none;}
-  .map-hint{font-size:11px;white-space:nowrap;bottom:12px;}
+  .map-hint{font-size:11px;}
   .back-btn{top:12px;left:12px;}
   .state-title-badge{top:60px;left:12px;right:12px;transform:none;font-size:12px;white-space:normal;}
   .rc-mun-wrap{padding:112px 12px 12px;}
@@ -312,15 +347,21 @@ th.ord.on .seta{color:var(--accent2);}
   <div class="content">
 
     <div class="view active" id="view-map">
-      <div id="map"></div>
-      <div class="map-legend">
-        <h4>Empresas ativas</h4>
-        <div class="legend-row"><div class="legend-swatch" style="background:#93C5FD"></div>&lt; 200k</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#60A5FA"></div>200k – 1M</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#3B82F6"></div>1M – 3M</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#1E3A8A"></div>3M+</div>
+      <div class="home">
+        <aside class="noticias" aria-label="Notícias de economia">
+          <h3><span class="ao-vivo"></span>Economia agora</h3>
+          <div class="ticker"><div class="trilho" id="trilho-economia"></div></div>
+        </aside>
+        <div class="mapa-area">
+          <div id="map"></div>
+          <div class="map-hint" id="map-hint">Clique em um estado para explorar · passe o mouse para ver o total</div>
+        </div>
+        <aside class="noticias" aria-label="Notícias de negócios e pequenas empresas">
+          <h3><span class="ao-vivo"></span>Negócios e PMEs</h3>
+          <div class="ticker"><div class="trilho" id="trilho-negocios"></div></div>
+        </aside>
       </div>
-      <div class="map-hint" id="map-hint">Clique em um estado no mapa para explorar empresas ativas</div>
+      <div class="faixa-noticias" aria-label="Últimas notícias"><div class="faixa-trilho" id="faixa-trilho"></div></div>
 
       <div class="side-panel" id="side-panel">
         <button class="close-panel" onclick="fecharPainel()">✕</button>
@@ -477,67 +518,154 @@ let cnaesData = null; // {itens:[{c,d,total,s,busca}]} carregado de /api/empresa
 
 let estadoAtual=null, municipioAtual=null, cnaeAtual=null, dadosAtuais=[];
 
-/* ===================== MAPA ===================== */
-function corPorDensidade(n){
-  if(n>=3000000) return '#1E3A8A';
-  if(n>=1000000) return '#3B82F6';
-  if(n>=200000) return '#60A5FA';
-  return '#93C5FD';
-}
-
-const map = L.map('map',{zoomControl:true,attributionControl:false,minZoom:3.5,maxZoom:7}).setView([-14.8,-51.5],4);
-
-window.addEventListener('load', ()=> setTimeout(()=> map.invalidateSize(), 150));
-window.addEventListener('resize', ()=>{ map.invalidateSize(); if(mapEstado) mapEstado.invalidateSize(); });
+/* ===================== MAPA (fixo, cada estado com a sua bandeira) ===================== */
+const map = L.map('map',{
+  zoomControl:false, attributionControl:false,
+  dragging:false, touchZoom:false, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false,
+  zoomSnap:0.05, zoomAnimation:false, fadeAnimation:false,
+}).setView([-14.8,-51.5],4);
 
 const estadoLayers = {};
+let estadoSelecionado = null;
+const ESTILO_BORDA = { color:'#0a0e27', weight:1.2 };
+const ESTILO_HOVER = { color:'#ffffff', weight:2.6 };
+const ESTILO_ATIVO = { color:'#facc15', weight:3 };
+
+function tooltipEstado(uf){
+  const info = estadosInfo[uf];
+  return info ? `<b>${esc(info.nome)}</b><br>${(info.empresas_ativas||0).toLocaleString('pt-BR')} empresas ativas` : esc(uf);
+}
 
 const geoLayer = L.geoJSON(GEOJSON_ESTADOS,{
-  style: feature=>{
-    const uf = feature.properties.sigla;
-    const info = estadosInfo[uf];
-    return {
-      fillColor: info?corPorDensidade(info.empresas_ativas):'#283055',
-      fillOpacity:0.88, color:'#0a0e27', weight:1.4
-    };
-  },
+  style: ()=> ({ fillColor:'#283055', fillOpacity:1, ...ESTILO_BORDA }),
   onEachFeature: (feature,layer)=>{
     const uf = feature.properties.sigla;
     estadoLayers[uf] = layer;
-    layer.on('mouseover', function(){ this.setStyle({fillOpacity:1, weight:2.4, color:'#93C5FD'}); });
-    layer.on('mouseout', function(){ this.setStyle({fillOpacity:0.88, weight:1.4, color:'#0a0e27'}); });
+    layer.on('mouseover', function(){ this.setStyle(ESTILO_HOVER); this.bringToFront(); });
+    layer.on('mouseout', function(){ this.setStyle(uf === estadoSelecionado ? ESTILO_ATIVO : ESTILO_BORDA); });
     layer.on('click', ()=> selecionarEstado(uf));
-
-    const center = layer.getBounds().getCenter();
-    L.marker(center,{
+    L.marker(layer.getBounds().getCenter(),{
       icon: L.divIcon({className:'state-label', html:uf, iconSize:[30,14]}),
       interactive:false
     }).addTo(map);
-
-    const info = estadosInfo[uf];
-    if(info){
-      layer.bindTooltip(`<b>${info.nome}</b><br>${info.empresas_ativas.toLocaleString('pt-BR')} empresas ativas`, {className:'state-tooltip', sticky:true});
-    }
+    layer.bindTooltip(()=> tooltipEstado(uf), {className:'state-tooltip', sticky:true});
   }
 }).addTo(map);
 
-try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){}
+// Preenche cada estado com a imagem da sua bandeira (padrão SVG do tamanho do estado na tela)
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function aplicarBandeiras(){
+  const svg = map.getPanes().overlayPane.querySelector('svg');
+  if(!svg) return;
+  let defs = svg.querySelector('defs#bandeiras');
+  if(!defs){
+    defs = document.createElementNS(SVG_NS, 'defs');
+    defs.id = 'bandeiras';
+    svg.insertBefore(defs, svg.firstChild);
+  }
+  Object.entries(estadoLayers).forEach(([uf, layer])=>{
+    const path = layer._path;
+    if(!path) return;
+    let caixa;
+    try{ caixa = path.getBBox(); }catch(e){ return; }
+    let padrao = defs.querySelector(`#bandeira-${uf}`), img;
+    if(!padrao){
+      padrao = document.createElementNS(SVG_NS, 'pattern');
+      padrao.id = `bandeira-${uf}`;
+      padrao.setAttribute('patternUnits', 'userSpaceOnUse');
+      img = document.createElementNS(SVG_NS, 'image');
+      img.setAttribute('href', `/bandeiras/${uf}.webp`);
+      img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      padrao.appendChild(img);
+      defs.appendChild(padrao);
+    }else img = padrao.firstChild;
+    for(const [k, v] of Object.entries({ x:caixa.x, y:caixa.y, width:caixa.width, height:caixa.height })) padrao.setAttribute(k, v);
+    img.setAttribute('width', caixa.width);
+    img.setAttribute('height', caixa.height);
+    layer.setStyle({ fillColor:`url(#bandeira-${uf})` });
+  });
+}
+
+// O mapa não se move: só se reenquadra quando o espaço muda (janela, painel, troca de tela)
+function enquadrarMapa(){
+  map.invalidateSize();
+  try{ map.fitBounds(geoLayer.getBounds(), { padding:[14,14], animate:false }); }catch(e){}
+  requestAnimationFrame(aplicarBandeiras);
+}
+let timerEnquadrar = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(timerEnquadrar);
+  timerEnquadrar = setTimeout(()=>{ enquadrarMapa(); if(mapEstado) mapEstado.invalidateSize(); }, 120);
+});
+window.addEventListener('load', ()=> setTimeout(enquadrarMapa, 150));
+enquadrarMapa();
 
 function aplicarEstadosInfoNoMapa(){
-  Object.keys(estadoLayers).forEach(uf=>{
-    const layer = estadoLayers[uf];
-    const info = estadosInfo[uf];
-    if(!info) return;
-    layer.setStyle({fillColor: corPorDensidade(info.empresas_ativas)});
-    layer.unbindTooltip();
-    layer.bindTooltip(`<b>${info.nome}</b><br>${info.empresas_ativas.toLocaleString('pt-BR')} empresas ativas`, {className:'state-tooltip', sticky:true});
-  });
+  // Os tooltips leem estadosInfo na hora; aqui só atualiza o total do topo
   const totalEl = document.getElementById('counter-total');
   if(totalEl){
     const total = Object.values(estadosInfo).reduce((s,e)=> s+(e.empresas_ativas||0), 0);
     if(total>0) totalEl.textContent = `${total.toLocaleString('pt-BR')} empresas ativas`;
   }
 }
+
+function destacarEstado(uf){
+  const anterior = estadoSelecionado && estadoLayers[estadoSelecionado];
+  estadoSelecionado = uf;
+  if(anterior) anterior.setStyle(ESTILO_BORDA);
+  const atual = uf && estadoLayers[uf];
+  if(atual){ atual.setStyle(ESTILO_ATIVO); atual.bringToFront(); }
+}
+
+/* ===================== NOTÍCIAS (colunas ao lado do mapa) ===================== */
+function tempoAtras(iso){
+  if(!iso) return '';
+  const min = Math.round((Date.now() - new Date(iso)) / 60000);
+  if(min < 60) return `há ${Math.max(min, 1)} min`;
+  const h = Math.round(min / 60);
+  if(h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24);
+  return `há ${d} ${d === 1 ? 'dia' : 'dias'}`;
+}
+
+function htmlNoticia(n, copia){
+  const foco = copia ? ' tabindex="-1"' : '';
+  return `<a class="noticia" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer"${foco}>
+    <div class="meta">${esc(n.fonte)}${n.data ? ' · ' + tempoAtras(n.data) : ''}</div>
+    <div class="tit">${esc(n.titulo)}</div></a>`;
+}
+
+// Conteúdo duplicado = rolagem contínua; a cópia fica oculta para leitores de tela
+function preencherTrilho(el, itens, item, segPorItem){
+  const lista = itens.map(n=> item(n, false)).join('');
+  const copia = itens.map(n=> item(n, true)).join('');
+  el.innerHTML = `<div>${lista}</div><div aria-hidden="true">${copia}</div>`;
+  el.style.setProperty('--dur', `${Math.max(40, itens.length * segPorItem)}s`);
+}
+
+async function carregarNoticias(){
+  try{
+    const resp = await fetch('/api/noticias');
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const dados = await resp.json();
+    for(const chave of ['economia', 'negocios']){
+      const el = document.getElementById(`trilho-${chave}`);
+      const itens = dados[chave] || [];
+      el.closest('.noticias').classList.toggle('vazia', !itens.length);
+      preencherTrilho(el, itens, htmlNoticia, 7);
+    }
+    const faixa = [...(dados.economia || []).slice(0, 10), ...(dados.negocios || []).slice(0, 10)];
+    const itemFaixa = (n, copia)=> `<a class="item-faixa" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer"${copia ? ' tabindex="-1"' : ''}><b>${esc(n.fonte)}</b>${esc(n.titulo)}</a>`;
+    const trilho = document.getElementById('faixa-trilho');
+    preencherTrilho(trilho, faixa, itemFaixa, 9);
+    trilho.style.display = 'inline-flex';
+    [...trilho.children].forEach(c=> c.style.display = 'inline-flex');
+  }catch(err){
+    document.querySelectorAll('.noticias').forEach(c=> c.classList.add('vazia'));
+  }
+}
+carregarNoticias();
+setInterval(carregarNoticias, 15 * 60 * 1000);
 
 const estadosPronto = carregarEstadosInfo();
 
@@ -572,15 +700,7 @@ function selecionarEstado(uf){
   setCrumb(['Brasil', `${uf} — ${info.nome}`]);
   document.getElementById('map-hint').style.display='none';
   mostrarPainelEstado(uf, info);
-  // Enquadra o estado na parte do mapa que o painel lateral não cobre
-  const layer = estadoLayers[uf];
-  if(layer){
-    const largPainel = Math.min(document.getElementById('side-panel').offsetWidth || 400, window.innerWidth);
-    const celular = window.innerWidth <= 768;
-    try{ map.fitBounds(layer.getBounds(), celular
-      ? { paddingTopLeft:[20,20], paddingBottomRight:[20, window.innerHeight*0.55] }
-      : { paddingTopLeft:[30,30], paddingBottomRight:[largPainel+30, 30] }); }catch(e){}
-  }
+  destacarEstado(uf);   // mapa fixo: só destaca o estado escolhido
 }
 
 function mostrarPainelEstado(uf, info){
@@ -1111,7 +1231,7 @@ function atualizarPaginacao(){
 }
 
 function abrirPainel(){ document.getElementById('side-panel').classList.add('open'); }
-function fecharPainel(){ document.getElementById('side-panel').classList.remove('open'); document.getElementById('map-hint').style.display='block'; }
+function fecharPainel(){ document.getElementById('side-panel').classList.remove('open'); document.getElementById('map-hint').style.display='block'; destacarEstado(null); }
 
 function voltarParaCNAEs(){
   document.getElementById('view-table').classList.remove('active');
@@ -1138,7 +1258,7 @@ function voltarAoBrasil(){
   document.getElementById('map-hint').style.display='block';
   setCrumb([]);
   estadoAtual=null; municipioAtual=null; cnaeAtual=null;
-  setTimeout(()=>{ map.invalidateSize(); }, 50);
+  setTimeout(enquadrarMapa, 50);
   atualizarUrl(true);
 }
 
@@ -1152,8 +1272,7 @@ function resetar(){
   document.getElementById('filtros-bar').classList.remove('active');
   fecharPainel();
   setCrumb([]);
-  try{ map.fitBounds(geoLayer.getBounds(), {padding:[10,10]}); }catch(e){ map.setView([-14.8,-51.5],4); }
-  setTimeout(()=> map.invalidateSize(), 50);
+  setTimeout(enquadrarMapa, 50);
   atualizarUrl(true);
 }
 

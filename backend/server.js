@@ -56,6 +56,7 @@ app.use('/api/empresas',    limiteApi,     require('./routes/empresas'));
 app.use('/api/estados',     limiteApi,     require('./routes/estados'));
 app.use('/api/remocao',     limiteRemocao, require('./routes/remocao'));
 app.use('/api/enriquecer',  limiteEnriq,   require('./routes/enriquecimento'));
+app.use('/api/noticias',    limiteApi,     require('./routes/noticias'));
 app.use('/api/diagnostico', limiteIA,      require('./routes/diagnostico'));
 
 app.get('/api/health', (_, res) =>
