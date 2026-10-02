@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { pool, comCache } = require('../lib/db');
+const { VALIDADE_DIAS } = require('../lib/enriquecer');
 
 // Códigos de porte_empresa da Receita: 00=Não informado, 01=Microempresa, 03=EPP, 05=Demais.
 // MEI não é porte: vem de simples.opcao_mei = 'S'.
@@ -212,6 +213,14 @@ function buildLinks(r) {
   };
 }
 
+function formatarEnriq(r) {
+  return {
+    site: r.site, instagram: r.instagram, facebook: r.facebook, linkedin: r.linkedin,
+    confianca: r.confianca, resumo: r.resumo, status: r.status,
+    em: r.criado_em instanceof Date ? r.criado_em.toISOString() : r.criado_em,
+  };
+}
+
 function fmtDate(d) {
   if (!d) return '';
   const s = d instanceof Date ? d.toISOString().slice(0,10) : String(d);
@@ -289,8 +298,19 @@ router.get('/', async (req, res, next) => {
         site:  '',
         ...buildLinks(r),
         wpp:  t1?.wpp || t2?.wpp || '',
+        enriq: null,
       };
     });
+
+    // Site e perfis já encontrados pela IA (válidos por VALIDADE_DIAS dias)
+    if (empresas.length) {
+      const cnpjs = data.rows.map(r => r.cnpj_basico + r.cnpj_ordem + r.cnpj_dv);
+      const { rows: enr } = await pool.query(`
+        SELECT cnpj, site, instagram, facebook, linkedin, confianca, resumo, status, criado_em
+        FROM enriquecimento WHERE cnpj = ANY($1::bpchar[]) AND criado_em > now() - make_interval(days => $2)`, [cnpjs, VALIDADE_DIAS]);
+      const porCnpj = Object.fromEntries(enr.map(r => [r.cnpj, formatarEnriq(r)]));
+      empresas.forEach((e, i) => { e.enriq = porCnpj[cnpjs[i]] || null; });
+    }
 
     const total = parseInt(count.rows[0].total);
 

@@ -187,6 +187,14 @@ th.ord.on .seta{color:var(--accent2);}
 .l-ig{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);width:22px;padding:0;}
 .l-fb{background:var(--fb);width:22px;padding:0;}
 .l-web{background:#374151;width:22px;padding:0;}
+.lbtn.busca{opacity:.45;}                       /* link de busca (ainda não confirmado) */
+.lbtn.busca:hover{opacity:1;}
+.lbtn.oficial{box-shadow:0 0 0 2px #22c55e inset;} /* perfil/site confirmado pela IA */
+.l-site{background:#0e7490;}
+.l-ia{border:0;cursor:pointer;font-family:inherit;}
+.l-ia:disabled{opacity:.6;cursor:wait;}
+.ia-ok{font-size:9.5px;font-weight:700;color:#4ade80;border:1px solid rgba(34,197,94,.4);border-radius:4px;padding:0 4px;align-self:center;cursor:help;}
+.ia-nada{font-size:9.5px;font-weight:700;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:0 4px;align-self:center;cursor:help;}
 .side-sub{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 2px;}
 #side-top-cnaes{display:flex;flex-direction:column;gap:6px;}
 #side-top-cnaes .t{font-size:12.5px;}
@@ -261,6 +269,7 @@ th.ord.on .seta{color:var(--accent2);}
     <input class="search-input" id="filtro-empresas" placeholder="🔍 Nome, CNPJ, bairro ou e-mail...">
     <button class="tbtn" onclick="voltarParaCNAEs()">← Mudar atividade</button>
     <button class="tbtn" onclick="resetar()">🏠 Início</button>
+    <button class="tbtn" id="btn-enriquecer" onclick="enriquecerPagina()" title="Busca com IA o site e os perfis oficiais das empresas desta página (até 20 por vez)">✨ Enriquecer página</button>
     <button class="tbtn green" id="btn-exportar" onclick="exportarPlanilha()">⬇ Exportar Excel</button>
     <button class="tbtn orange" onclick="enviarN8n()">⚡ Enviar n8n</button>
     <div class="toolbar-count" id="toolbar-count"></div>
@@ -1171,7 +1180,17 @@ function renderTabela(dados){
     const local = [e.bairro, mostrarCidade ? e.municipio : ''].filter(Boolean).join(' · ');
     const nomeQ = encodeURIComponent(e.fantasia || e.razao || '');
     const ehContador = e.email && RE_EMAIL_CONTADOR.test(e.email);
-    const link = (cls, href, txt, title) => href ? `<a class="lbtn ${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${title}">${txt}</a>` : '';
+    const link = (cls, href, txt, title) => href ? `<a class="lbtn ${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${txt}</a>` : '';
+    // Perfil oficial encontrado pela IA (contorno verde) ou, se não houver, link de busca (apagado)
+    const ia = e.enriq && e.enriq.status === 'ok' ? e.enriq : null;
+    const canal = (cls, oficial, busca, txt, nome) => oficial
+      ? link(`${cls} oficial`, oficial, txt, `${nome} oficial (encontrado pela IA)`)
+      : link(`${cls} busca`, busca, txt, `Buscar no ${nome}`);
+    const quando = e.enriq ? new Date(e.enriq.em).toLocaleDateString('pt-BR') : '';
+    const selo = !e.enriq
+      ? `<button class="lbtn l-ia" data-enriq="${esc(e.cnpj)}" title="Buscar com IA o site e os perfis oficiais">✨ IA</button>`
+      : ia ? `<span class="ia-ok" title="${esc(`Encontrado pela IA em ${quando} · confiança ${ia.confianca}${ia.resumo ? ' · ' + ia.resumo : ''}`)}">IA ✓</span>`
+           : `<span class="ia-nada" title="${esc(`A IA não encontrou canais oficiais em ${quando}`)}">IA –</span>`;
     return `<tr>
       <td class="cnpj" data-label="CNPJ">${esc(e.cnpj)}</td>
       <td class="razao">${esc(e.razao)}</td>
@@ -1187,14 +1206,66 @@ function renderTabela(dados){
       <td><div class="links-cell">
         ${link('l-maps', e.maps, '📍 Maps', 'Google Maps')}
         ${link('l-wpp', e.wpp, '💬 Wpp', 'WhatsApp')}
-        ${link('l-in', e.linkedin, 'in', 'LinkedIn')}
-        ${link('l-ig', e.instagram, 'IG', 'Instagram')}
-        ${link('l-fb', e.facebook, 'f', 'Facebook')}
-        ${link('l-web', e.google || `https://www.google.com/search?q=${nomeQ}`, '🌐', 'Buscar no Google')}
+        ${ia && ia.site ? link('l-site oficial', ia.site, '🌐 Site', 'Site oficial (encontrado pela IA)') : link('l-web', e.google || `https://www.google.com/search?q=${nomeQ}`, '🌐', 'Buscar no Google')}
+        ${canal('l-ig', ia?.instagram, e.instagram, 'IG', 'Instagram')}
+        ${canal('l-fb', ia?.facebook, e.facebook, 'f', 'Facebook')}
+        ${canal('l-in', ia?.linkedin, e.linkedin, 'in', 'LinkedIn')}
+        ${selo}
       </div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--muted)">Nenhuma empresa encontrada${filtrosAtivos() ? ' com esses filtros' : ''}.</td></tr>`;
   atualizarPaginacao();
+}
+
+/* ===================== ENRIQUECIMENTO POR IA ===================== */
+// Busca na web (Groq) o site e os perfis oficiais; o resultado fica salvo para todos
+async function enriquecerUma(cnpj){
+  const resp = await fetch(`/api/enriquecer/${cnpj.replace(/\D/g,'')}`, { method:'POST' });
+  const dados = await resp.json().catch(()=>({}));
+  if(resp.status === 429){ const e = new Error(dados.error || 'Limite atingido'); e.espera = dados.retry_after || 30; throw e; }
+  if(!resp.ok) throw new Error(dados.error || `HTTP ${resp.status}`);
+  const emp = dadosAtuais.find(x=>x.cnpj===cnpj);
+  if(emp) emp.enriq = dados;
+  return dados;
+}
+
+document.getElementById('tabela-body').addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('button[data-enriq]');
+  if(!btn) return;
+  btn.disabled = true; btn.textContent = '⏳';
+  try{
+    await enriquecerUma(btn.dataset.enriq);
+    renderTabela(dadosAtuais);
+  }catch(err){
+    btn.disabled = false; btn.textContent = '✨ IA';
+    alert(err.espera ? `${err.message} (aguarde ${err.espera}s)` : 'Não foi possível enriquecer: ' + err.message);
+  }
+});
+
+let enriquecendo = false;
+async function enriquecerPagina(){
+  if(enriquecendo) return;
+  const pendentes = dadosAtuais.filter(e=>!e.enriq).slice(0, 20);
+  if(!pendentes.length){ alert('Todas as empresas desta página já foram enriquecidas.'); return; }
+  const btn = document.getElementById('btn-enriquecer'), texto = btn.textContent;
+  enriquecendo = true; btn.disabled = true;
+  let feitas = 0;
+  try{
+    for(const e of pendentes){
+      btn.textContent = `⏳ ${feitas}/${pendentes.length}`;
+      try{ await enriquecerUma(e.cnpj); }
+      catch(err){
+        if(!err.espera) continue;                       // erro de uma empresa: segue para a próxima
+        btn.textContent = `⏸ aguardando ${err.espera}s`;
+        await new Promise(r=>setTimeout(r, err.espera*1000));
+        try{ await enriquecerUma(e.cnpj); }catch(e2){ if(e2.espera) break; }
+      }
+      feitas++;
+      renderTabela(dadosAtuais);
+    }
+  }finally{
+    enriquecendo = false; btn.disabled = false; btn.textContent = texto;
+  }
 }
 
 /* ===================== EXPORTAÇÃO ===================== */
@@ -1227,7 +1298,9 @@ async function exportarPlanilha(){
       'E-mail de contador?':e.email && RE_EMAIL_CONTADOR.test(e.email) ? 'Provável' : '',
       Endereço:[e.logr,e.num,e.compl].filter(Boolean).join(', '), Bairro:e.bairro, CEP:e.cep,
       Município:e.municipio, UF:e.uf,
-      CNAE:fmtCnae(e.cnae || cnaeAtual.c), Atividade:descCnae(e.cnae || cnaeAtual.c)
+      CNAE:fmtCnae(e.cnae || cnaeAtual.c), Atividade:descCnae(e.cnae || cnaeAtual.c),
+      Site:e.enriq?.site||'', Instagram:e.enriq?.instagram||'', Facebook:e.enriq?.facebook||'', LinkedIn:e.enriq?.linkedin||'',
+      'Canais encontrados pela IA em':e.enriq ? new Date(e.enriq.em).toLocaleDateString('pt-BR') : ''
     }));
     const ws = XLSX.utils.json_to_sheet(linhas);
     const wb = XLSX.utils.book_new();

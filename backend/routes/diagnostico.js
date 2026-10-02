@@ -1,7 +1,8 @@
 const router = require('express').Router();
 
 const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile'; // free tier
+// llama-3.3-70b-versatile foi descontinuado no Groq
+const GROQ_MODEL = process.env.GROQ_MODELO || 'openai/gpt-oss-120b';
 
 /* ── POST /api/diagnostico ── */
 router.post('/', async (req, res, next) => {

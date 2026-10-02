@@ -36,6 +36,14 @@ const limiteIA = rateLimit({
   legacyHeaders: false,
   message: { error: 'Limite de análises por hora atingido.' },
 });
+// Enriquecimento por IA: cada consulta leva ~20s no Groq; limite folgado para uso interno
+const limiteEnriq = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: parseInt(process.env.RATE_LIMIT_ENRIQ_POR_HORA) || 200,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Limite de enriquecimentos por hora atingido.' },
+});
 const limiteRemocao = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 10,
@@ -47,6 +55,7 @@ const limiteRemocao = rateLimit({
 app.use('/api/empresas',    limiteApi,     require('./routes/empresas'));
 app.use('/api/estados',     limiteApi,     require('./routes/estados'));
 app.use('/api/remocao',     limiteRemocao, require('./routes/remocao'));
+app.use('/api/enriquecer',  limiteEnriq,   require('./routes/enriquecimento'));
 app.use('/api/diagnostico', limiteIA,      require('./routes/diagnostico'));
 
 app.get('/api/health', (_, res) =>

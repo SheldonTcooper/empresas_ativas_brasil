@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS cnpj_oculto (
   criado_em   TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
+-- ── Enriquecimento por IA (site e perfis públicos encontrados na web) ──────
+-- Uma linha por CNPJ completo; não é apagada pela importação.
+CREATE TABLE IF NOT EXISTS enriquecimento (
+  cnpj        CHAR(14)     PRIMARY KEY,
+  site        TEXT,
+  instagram   TEXT,
+  facebook    TEXT,
+  linkedin    TEXT,
+  confianca   VARCHAR(5),               -- alta | media | baixa
+  resumo      TEXT,
+  fontes      JSONB,                    -- URLs que a busca visitou
+  descartados JSONB,                    -- links sugeridos que não apareceram na busca
+  modelo      VARCHAR(60),
+  status      VARCHAR(10)  NOT NULL,    -- ok | nada
+  criado_em   TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ÍNDICES — críticos para performance das queries
 -- ═══════════════════════════════════════════════════════════════════════════
