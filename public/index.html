@@ -1256,6 +1256,7 @@ async function enriquecerPagina(){
       try{ await enriquecerUma(e.cnpj); }
       catch(err){
         if(!err.espera) continue;                       // erro de uma empresa: segue para a próxima
+        if(err.espera > 180){ alert(err.message); break; } // cota do dia esgotada
         btn.textContent = `⏸ aguardando ${err.espera}s`;
         await new Promise(r=>setTimeout(r, err.espera*1000));
         try{ await enriquecerUma(e.cnpj); }catch(e2){ if(e2.espera) break; }

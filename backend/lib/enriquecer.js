@@ -4,7 +4,10 @@
 const { pool } = require('./db');
 
 const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
-const MODELO      = process.env.GROQ_MODELO_BUSCA || 'openai/gpt-oss-120b';
+// Em ordem de uso. No plano gratuito cada modelo tem 200 mil tokens/dia: o 20b gasta ~19 mil
+// por empresa (~10/dia) e o 120b ~60–125 mil (~2/dia); quando um esgota, passa para o próximo.
+const MODELOS = (process.env.GROQ_MODELOS_BUSCA || 'openai/gpt-oss-20b,openai/gpt-oss-120b')
+  .split(',').map(s => s.trim()).filter(Boolean);
 const VALIDADE_DIAS = 90;
 const MAX_SIMULTANEAS = 1;   // cota do Groq gratuito: uma pesquisa por vez
 
@@ -101,41 +104,59 @@ function extrairJson(texto) {
 }
 
 class LimiteGroq extends Error {
-  constructor(segundos) { super('Limite de consultas do Groq atingido. Tente de novo em instantes.'); this.status = 429; this.retryAfter = segundos; }
-}
-
-// "42.202s" / "577ms" / "1m3s" (cabeçalhos do Groq) → segundos
-function segundos(v) {
-  const s = String(v || '');
-  const m = s.match(/(?:(\d+)m(?!s))?(?:([\d.]+)s)?(?:([\d.]+)ms)?/);
-  const total = (parseFloat(m?.[1]) || 0) * 60 + (parseFloat(m?.[2]) || 0) + (parseFloat(m?.[3]) || 0) / 1000;
-  return total > 0 ? total : null;
-}
-
-const ESPERA_MAX = 70;     // a cota de tokens do Groq gratuito zera a cada minuto
-const TENTATIVAS = 4;
-const dormir = s => new Promise(r => setTimeout(r, s * 1000));
-
-/* No plano gratuito cada pesquisa passa da cota de tokens do minuto: o Groq responde 429
-   e diz quanto esperar. Aqui a espera é feita no servidor, sem erro para o usuário. */
-async function consultarGroq(descricao) {
-  for (let tentativa = 1; ; tentativa++) {
-    try {
-      return await chamarGroq(descricao);
-    } catch (err) {
-      if (!(err instanceof LimiteGroq) || tentativa >= TENTATIVAS || err.retryAfter > ESPERA_MAX) throw err;
-      await dormir(err.retryAfter + 1);
-    }
+  constructor(segundos, diario = false) {
+    super(diario
+      ? `Cota diária gratuita do Groq esgotada (cerca de 10 empresas por dia). Volta em ${tempoLegivel(segundos)}.`
+      : 'Limite de consultas do Groq atingido. Tente de novo em instantes.');
+    this.status = 429; this.retryAfter = segundos; this.diario = diario;
   }
 }
 
-async function chamarGroq(descricao) {
+function tempoLegivel(s) {
+  const h = Math.floor(s / 3600), m = Math.ceil((s % 3600) / 60);
+  return h ? `${h}h${m ? ` ${m}min` : ''}` : `${Math.max(m, 1)} min`;
+}
+
+// "42.202s" / "577ms" / "1m3s" / "2h3m10s" (Groq) → segundos
+function segundos(v) {
+  const s = String(v || '');
+  const m = s.match(/^(?:(\d+)h)?(?:(\d+)m(?!s))?(?:([\d.]+)s)?(?:([\d.]+)ms)?/);
+  const total = (parseFloat(m?.[1]) || 0) * 3600 + (parseFloat(m?.[2]) || 0) * 60
+    + (parseFloat(m?.[3]) || 0) + (parseFloat(m?.[4]) || 0) / 1000;
+  return total > 0 ? total : null;
+}
+
+const ESPERA_MAX = 180;    // cota por minuto: o Groq diz quanto esperar (até ~3 min após uma pesquisa grande)
+const TENTATIVAS = 4;
+const dormir = s => new Promise(r => setTimeout(r, s * 1000));
+
+/* Plano gratuito do Groq: 8 mil tokens/minuto e 200 mil/dia por modelo.
+   - limite do minuto: espera o tempo que o Groq indicar e tenta de novo (sem erro na tela);
+   - limite do dia: passa para o próximo modelo; se todos esgotaram, avisa quando volta. */
+async function consultarGroq(descricao) {
+  let menorEspera = null;
+  for (const modelo of MODELOS) {
+    for (let tentativa = 1; ; tentativa++) {
+      try {
+        return { modelo, msg: await chamarGroq(descricao, modelo) };
+      } catch (err) {
+        if (!(err instanceof LimiteGroq)) throw err;
+        if (err.diario) { menorEspera = Math.min(menorEspera ?? Infinity, err.retryAfter); break; }
+        if (tentativa >= TENTATIVAS || err.retryAfter > ESPERA_MAX) throw err;
+        await dormir(err.retryAfter + 1);
+      }
+    }
+  }
+  throw new LimiteGroq(menorEspera ?? 3600, true);
+}
+
+async function chamarGroq(descricao, modelo) {
   if (!process.env.GROQ_API_KEY) { const e = new Error('GROQ_API_KEY não configurada no servidor'); e.status = 503; throw e; }
   const resp = await fetch(GROQ_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: MODELO,
+      model: modelo,
       temperature: 1, top_p: 1,          // exigido pela busca no navegador do Groq
       reasoning_effort: 'low',           // buscas mais curtas, menos tokens
       max_completion_tokens: 2000,
@@ -145,12 +166,14 @@ async function chamarGroq(descricao) {
     }),
     signal: AbortSignal.timeout(90000),
   });
-  if (resp.status === 429) {
-    const espera = segundos(resp.headers.get('retry-after') && `${resp.headers.get('retry-after')}s`)
-      || segundos(resp.headers.get('x-ratelimit-reset-tokens')) || 60;
-    throw new LimiteGroq(Math.ceil(espera));
-  }
   const dados = await resp.json().catch(() => ({}));
+  if (resp.status === 429) {
+    const texto = String(dados?.error?.message || '');
+    const espera = segundos(resp.headers.get('retry-after') && `${resp.headers.get('retry-after')}s`)
+      || segundos((texto.match(/try again in ([\dhms.]+)/) || [])[1])
+      || segundos(resp.headers.get('x-ratelimit-reset-tokens')) || 60;
+    throw new LimiteGroq(Math.ceil(espera), /per day|TPD|RPD/.test(texto));
+  }
   if (!resp.ok) { const e = new Error(`Groq ${resp.status}: ${dados?.error?.message || 'erro'}`); e.status = 502; throw e; }
   return dados.choices?.[0]?.message || {};
 }
@@ -158,7 +181,7 @@ async function chamarGroq(descricao) {
 /* Enriquece um estabelecimento (linha da tabela busca + descrição do CNAE). */
 async function enriquecer(r) {
   const cnpj = r.cnpj_basico + r.cnpj_ordem + r.cnpj_dv;
-  const msg = await comVaga(() => consultarGroq(descricaoEmpresa(r)));
+  const { modelo, msg } = await comVaga(() => consultarGroq(descricaoEmpresa(r)));
 
   const ferramentas = Array.isArray(msg.executed_tools) ? msg.executed_tools : [];
   const resultados = ferramentas.flatMap(t => t?.search_results?.results || []);
@@ -184,7 +207,7 @@ async function enriquecer(r) {
     ON CONFLICT (cnpj) DO UPDATE SET site=$2, instagram=$3, facebook=$4, linkedin=$5, confianca=$6, resumo=$7,
       fontes=$8, descartados=$9, modelo=$10, status=$11, criado_em=now()`,
     [cnpj, final.site || null, final.instagram || null, final.facebook || null, final.linkedin || null,
-     achou ? confianca : null, resumo, JSON.stringify(fontes), JSON.stringify(descartados), MODELO, achou ? 'ok' : 'nada']);
+     achou ? confianca : null, resumo, JSON.stringify(fontes), JSON.stringify(descartados), modelo, achou ? 'ok' : 'nada']);
 
   return { ...final, confianca: achou ? confianca : null, resumo, status: achou ? 'ok' : 'nada', em: new Date().toISOString() };
 }

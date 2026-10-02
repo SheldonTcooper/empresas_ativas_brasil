@@ -130,12 +130,13 @@ O servidor entrega cada uma dessas URLs com título, descrição, canonical e Op
 
 ## Enriquecimento por IA (site e perfis oficiais)
 
-Na tabela, o botão **✨ IA** de cada empresa (ou **✨ Enriquecer página**, até 20 por vez) pesquisa na web, via Groq (`openai/gpt-oss-120b` com busca no navegador), o site e os perfis oficiais de Instagram, Facebook e LinkedIn. Regras:
+Na tabela, o botão **✨ IA** de cada empresa (ou **✨ Enriquecer página**, até 20 por vez) pesquisa na web, via Groq (`openai/gpt-oss-20b`, e `openai/gpt-oss-120b` quando a cota do primeiro acaba, com busca no navegador), o site e os perfis oficiais de Instagram, Facebook e LinkedIn. Regras:
 
 - Só entra um link que **apareceu de fato nos resultados da busca** (links sugeridos pela IA que não apareceram são descartados e ficam em `enriquecimento.descartados`).
 - Perfis pessoais não contam; sites de listas de CNPJ, guias e marketplaces não contam como site.
 - O resultado fica salvo na tabela `enriquecimento` por 90 dias e aparece para todos (`POST /api/enriquecer/:cnpj`, `?forcar=1` pesquisa de novo).
-- Variáveis: `GROQ_API_KEY` (obrigatória), `GROQ_MODELO_BUSCA` (padrão `openai/gpt-oss-120b`), `RATE_LIMIT_ENRIQ_POR_HORA` (padrão 200).
+- **Plano gratuito do Groq:** 200 mil tokens/dia por modelo e 8 mil/minuto. Cada pesquisa gasta ~19 mil tokens no 20b e 60–125 mil no 120b, então cabem **cerca de 10–12 empresas por dia**. O servidor faz uma pesquisa por vez, espera sozinho o limite do minuto e avisa quando a cota do dia acaba.
+- Variáveis: `GROQ_API_KEY` (obrigatória), `GROQ_MODELOS_BUSCA` (padrão `openai/gpt-oss-20b,openai/gpt-oss-120b`), `RATE_LIMIT_ENRIQ_POR_HORA` (padrão 200).
 
 ## LGPD — remoção de dados
 
