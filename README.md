@@ -72,6 +72,12 @@ Schema em `public` (sem prefixo de schema customizado), tabelas principais:
 
 Índices relevantes em `estabelecimento`: `(cnpj_basico, cnpj_ordem, cnpj_dv)` (PK), `municipio`, `cnae_fiscal`, `situacao_cadastral`, e índices compostos `(municipio, cnae_fiscal, situacao_cadastral)` / `(uf, cnae_fiscal, situacao_cadastral)` para as consultas do painel.
 
+### Tabela de busca (o que o painel consulta)
+
+O painel não consulta `estabelecimento`/`empresa` diretamente: lê a tabela `busca`, montada por `backend/db/otimizar_busca.sql` com as empresas **ativas** já juntas com razão social, porte e Simples/MEI, gravada em ordem de município/CNAE e com índices na ordem da tela. Assim, mesmo listas de 100 mil empresas (ex.: restaurantes em SP) respondem em milissegundos.
+
+**Rotina mensal** (nova base da Receita): rode `import-fast.sh` (ou `resume_estab.sh`) e depois `import-simples.sh`. Os dois terminam reconstruindo a `busca` e trocando de uma vez, sem tirar o site do ar.
+
 ### Importação de dados
 
 Os arquivos da Receita Federal são baixados de um mirror (`dados-abertos-rf-cnpj.casadosdados.com.br`, atualizado mensalmente) — o domínio oficial `dadosabertos.rfb.gov.br` apresentou instabilidade de conexão em diversos pontos de teste.
