@@ -26,7 +26,7 @@ for i in 0 1 2 3 4 5 6 7 8 9; do
     [ -f "$f" ] || continue
     log "Estabelecimentos parte $i: filtrando (python) + importando..."
     psql "$DB_URL" -c "TRUNCATE estabelecimento_staging"
-    python3 /var/www/empresas_ativas_brasil/backend/db/filtro_ativos.py < "$f" | \
+    python3 /var/www/empresas_ativas_brasil/backend/db/filtro_estab.py < "$f" | \
       psql "$DB_URL" -c "\COPY estabelecimento_staging FROM STDIN WITH (FORMAT CSV, DELIMITER ';', ENCODING 'LATIN1', HEADER FALSE, QUOTE '\"', FORCE_NULL (data_situacao_cadastral, data_inicio_atividade, data_situacao_especial))"
     log "Estabelecimentos parte $i: mesclando..."
     psql "$DB_URL" -c "INSERT INTO estabelecimento SELECT * FROM estabelecimento_staging ON CONFLICT (cnpj_basico, cnpj_ordem, cnpj_dv) DO NOTHING"

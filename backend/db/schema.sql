@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS empresa (
   natureza_juridica         CHAR(4),
   qualificacao_responsavel  CHAR(2),
   capital_social            NUMERIC(18,2),
-  porte_empresa             CHAR(2),        -- 00=NI 01=MEI 03=ME 05=EPP 07=Demais
+  porte_empresa             CHAR(2),        -- 00=Não informado 01=ME 03=EPP 05=Demais (MEI vem de simples.opcao_mei)
   ente_federativo           VARCHAR(50)
 );
 
@@ -115,6 +115,27 @@ CREATE TABLE IF NOT EXISTS socio (
   faixa_etaria             CHAR(1)
 );
 
+-- ── LGPD: pedidos de remoção e CNPJs ocultados ─────────────────────────────
+-- Não são apagadas pela importação (o import só faz TRUNCATE das tabelas da Receita).
+
+CREATE TABLE IF NOT EXISTS pedido_remocao (
+  id          SERIAL       PRIMARY KEY,
+  cnpj        CHAR(14)     NOT NULL,
+  nome        VARCHAR(150) NOT NULL,
+  email       VARCHAR(150) NOT NULL,
+  motivo      TEXT,
+  ip          VARCHAR(45),
+  criado_em   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  status      VARCHAR(20)  NOT NULL DEFAULT 'pendente'   -- pendente | aprovado | recusado
+);
+
+-- CNPJ nesta tabela some de todas as buscas, contagens e exportações
+CREATE TABLE IF NOT EXISTS cnpj_oculto (
+  cnpj        CHAR(14)     PRIMARY KEY,
+  pedido_id   INTEGER      REFERENCES pedido_remocao(id),
+  criado_em   TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ÍNDICES — críticos para performance das queries
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -126,6 +147,10 @@ CREATE INDEX IF NOT EXISTS idx_est_mun_cnae_sit
 -- Busca por UF
 CREATE INDEX IF NOT EXISTS idx_est_uf_cnae_sit
   ON estabelecimento (uf, cnae_fiscal, situacao_cadastral);
+
+-- CNAE secundário ("5510801,5590699" → array) — a API usa exatamente esta expressão
+CREATE INDEX IF NOT EXISTS idx_est_cnae_sec
+  ON estabelecimento USING gin ((string_to_array(cnae_fiscal_secundaria, ',')));
 
 -- Lookup por razão social
 CREATE INDEX IF NOT EXISTS idx_empresa_razao_trgm

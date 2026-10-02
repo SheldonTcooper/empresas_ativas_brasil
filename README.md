@@ -30,19 +30,30 @@ Cada empresa retornada já vem com CNPJ formatado, razão social, nome fantasia,
 ```
 empresas_ativas_brasil/
 ├── backend/
-│   ├── server.js                # entrypoint Express
+│   ├── server.js                # entrypoint Express (gzip, rate limit, rotas)
+│   ├── lib/
+│   │   ├── db.js                # pool do Postgres, cache em memória, slug()
+│   │   └── estados.js           # dados fixos dos 27 estados
 │   ├── routes/
-│   │   ├── empresas.js          # rotas /api/empresas, /cidades, /cnaes, /cnpj/:cnpj
-│   │   └── diagnostico.js       # rota de diagnóstico/health
+│   │   ├── empresas.js          # /api/empresas (filtros), /bairros, /segmentos, /cidades, /cnaes, /cnpj/:cnpj
+│   │   ├── estados.js           # /api/estados/info (mapa e painel do estado)
+│   │   ├── remocao.js           # /api/remocao (pedidos LGPD)
+│   │   ├── paginas.js           # /:uf/:cidade/:atividade (SEO), /sitemap.xml, /privacidade, /termos
+│   │   └── diagnostico.js       # análise por IA (Groq)
+│   ├── paginas/                 # modelos de /privacidade e /termos
 │   ├── db/
 │   │   ├── schema.sql           # schema completo do banco
+│   │   ├── import-fast.sh       # importação completa (só empresas ativas + Simples)
+│   │   ├── import-simples.sh    # importa só o Simples Nacional (MEI)
 │   │   ├── resume_estab.sh      # script de import (Estabelecimentos)
-│   │   ├── filtro_ativos.py     # filtro CSV (apenas situação ativa) respeitando quoting da RFB
+│   │   ├── filtro_estab.py      # filtro CSV por situação cadastral (padrão: só ativas) respeitando quoting da RFB
 │   │   └── ...
 │   ├── .env                     # variáveis de ambiente (não versionado)
 │   └── package.json
 └── public/
     ├── index.html                # painel (SPA single-file)
+    ├── flags/                    # bandeiras dos estados
+    ├── robots.txt
     └── brasil.geojson             # geometria dos estados para o mapa
 ```
 
@@ -79,11 +90,47 @@ Base: `/api/empresas`
 
 | Rota | Descrição |
 |---|---|
-| `GET /api/empresas?municipio=<codigo>&cnae=<codigo>&page=&limit=` | Lista empresas ativas por município + CNAE (paginado, limite máx. 200) |
-| `GET /api/empresas/cidades?estado=UF` | Lista municípios de um estado que possuem empresas ativas |
-| `GET /api/empresas/cnaes?estado=UF&municipio=<codigo>` | Lista CNAEs ativos em um município (ou estado) |
+| `GET /api/empresas` | Lista paginada (máx. 200 por página) com total real. Parâmetros abaixo |
+| `GET /api/empresas/bairros` | Bairros do escopo/atividade, com contagem |
+| `GET /api/empresas/segmentos` | Segmentos prontos (Hospedagem, Bancos, Securitizadora) |
+| `GET /api/empresas/cidades?estado=UF` | Municípios do estado com empresas ativas |
+| `GET /api/empresas/cnaes?municipio=<codigo>` ou `?estado=UF` | CNAEs com quantidade de empresas, do maior para o menor |
 | `GET /api/empresas/cnpj/:cnpj` | Detalhe de uma empresa por CNPJ |
-| `GET /api/diagnostico` (ou `/api/health`) | Health check |
+| `GET /api/estados/info` | Dados dos 27 estados + empresas ativas e aberturas nos últimos 30 dias |
+| `POST /api/remocao` | Pedido de remoção de CNPJ (LGPD) |
+| `GET /api/health` | Health check |
+
+Parâmetros de `/api/empresas` — todos os filtros valem para a base inteira, e o `total` usa o mesmo filtro:
+
+| Parâmetro | Exemplo | Efeito |
+|---|---|---|
+| `municipio` **ou** `estado` | `7535` / `PR` | Escopo: um município ou o estado inteiro |
+| `cnae` **ou** `segmento` | `5611201`, `5611-2/01`, `5611201,5611203` / `hospedagem` | Atividade |
+| `secundario=1` | | Também procura no CNAE secundário |
+| `q` | `alvaro`, `28.124` | Nome, fantasia, bairro, e-mail ou CNPJ (sem diferenciar acento) |
+| `porte` | `MEI`, `ME`, `EPP`, `DEMAIS` | MEI vem da tabela `simples` |
+| `abertura_dias` | `90` | Abertas nos últimos N dias |
+| `bairro`, `tipo` | `BATEL`, `matriz`/`filial` | |
+| `tem_telefone`, `tem_whatsapp`, `tem_email`, `sem_contador` | `1` | Contato válido / celular / e-mail / exclui e-mail de contabilidade |
+| `ordem`, `dir` | `nome`/`abertura`/`porte`/`bairro`, `asc`/`desc` | Ordenação |
+
+## Páginas (URLs do painel)
+
+O endereço acompanha a navegação, então dá para compartilhar o link e usar o botão voltar:
+`/pr` → municípios · `/pr/curitiba` → atividades · `/pr/curitiba/5611201` → empresas · `/pr/todo-o-estado/hospedagem` → segmento no estado inteiro · `?porte=MEI&whatsapp=1&pagina=2` → filtros.
+
+O servidor entrega cada uma dessas URLs com título, descrição, canonical e Open Graph próprios ("Restaurantes e similares em Curitiba (PR): 5.679 empresas ativas"). URLs com filtros recebem `noindex`. O `/sitemap.xml` é gerado a partir do banco.
+
+## LGPD — remoção de dados
+
+`/privacidade` tem o formulário de remoção, que grava em `pedido_remocao`. Para aprovar um pedido (o CNPJ some de buscas, contagens e exportações):
+
+```sql
+INSERT INTO cnpj_oculto (cnpj, pedido_id) SELECT cnpj, id FROM pedido_remocao WHERE id = <protocolo>;
+UPDATE pedido_remocao SET status = 'aprovado' WHERE id = <protocolo>;
+```
+
+Os pedidos pendentes: `SELECT * FROM pedido_remocao WHERE status = 'pendente' ORDER BY criado_em;`
 
 ## Variáveis de ambiente (`backend/.env`)
 
@@ -94,6 +141,11 @@ DATABASE_SSL=false
 CORS_ORIGIN=https://empresasativas.online
 GROQ_API_KEY=            # reservado para enriquecimento por IA (futuro)
 BRASILIO_TOKEN=          # fallback opcional via Brasil.IO quando a busca local retorna 0 resultados
+RATE_LIMIT_POR_MINUTO=120    # consultas por IP por minuto na API
+RATE_LIMIT_IA_POR_HORA=30
+SITE_URL=https://www.empresasativas.online
+SITE_RESPONSAVEL=        # nome/razão social e CNPJ do responsável (aparece em /privacidade e /termos)
+SITE_EMAIL_CONTATO=      # e-mail de contato LGPD (opcional; sem ele, só o formulário)
 ```
 
 ## Rodando localmente
@@ -112,13 +164,15 @@ O `server.js` serve o frontend estático (`public/`) e a API na mesma porta.
 - Processo gerenciado via **PM2** (`pm2 start server.js --name empresas-api`), com `pm2 save` + `pm2 startup systemd` para sobreviver a reinicializações da VPS.
 - Roteamento de domínio via **Traefik** (provider de arquivo estático, `backend-config.yml`), apontando `empresasativas.online` para `http://172.18.0.1:3002` (gateway Docker → host).
 - TLS automático via Let's Encrypt (resolver `mytlschallenge` do Traefik).
+- **Workflow "Deploy na VPS"** (GitHub → Actions → Run workflow): faz backup da pasta em `/root/backups`, guarda alterações locais num `git stash`, atualiza o código, roda `npm install`, aplica o `schema.sql`, importa o Simples (opcional, necessário uma vez para o porte MEI) e recarrega o PM2.
 
 ## Roadmap
 
 - [ ] Importar tabela `socio` (quadro societário)
 - [ ] Workflow de enriquecimento via IA (n8n): dados societários, site, redes sociais
 - [ ] Mapa de municípios com geometria real (atualmente a navegação por município usa lista pesquisável, não um segundo mapa)
-- [ ] Paginação completa na tabela de resultados (hoje limitada a 200 registros por consulta)
+- [x] Paginação completa na tabela de resultados
+- [ ] Login / chave de acesso por plano (hoje há limite de consultas por IP)
 
 ## Licença
 

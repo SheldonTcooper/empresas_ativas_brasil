@@ -1,0 +1,81 @@
+name: Deploy na VPS
+
+# Atualiza o código na VPS, aplica o schema novo e reinicia a API.
+# Antes de mexer em qualquer coisa, salva um backup da pasta e guarda
+# alterações locais da VPS num "git stash" (nada se perde).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch a publicar'
+        required: true
+        default: 'claude/friendly-edison-3atmg6'
+      importar_simples:
+        description: 'Importar a tabela do Simples (necessário 1x para o porte MEI aparecer; ~15 min)'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    env:
+      SSH_OPTS: "-o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -i /tmp/vps_key"
+      VPS: "root@${{ secrets.VPS_HOST }}"
+      APP_DIR: /var/www/empresas_ativas_brasil
+      REF: ${{ github.event.inputs.ref }}
+
+    steps:
+      - name: Configurar SSH
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > /tmp/vps_key
+          chmod 600 /tmp/vps_key
+
+      - name: Backup da pasta atual
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; mkdir -p /root/backups; \
+            tar --exclude=node_modules -czf /root/backups/empresas-\$(date +%Y%m%d-%H%M).tgz -C $(dirname $APP_DIR) $(basename $APP_DIR); \
+            ls -lh /root/backups | tail -3"
+
+      - name: Atualizar código
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; cd $APP_DIR; \
+            git rev-parse --is-inside-work-tree >/dev/null || { echo '❌ $APP_DIR não é um repositório git'; exit 1; }; \
+            git stash push --include-untracked -m \"antes do deploy \$(date +%F-%H%M)\" || true; \
+            git fetch origin '$REF'; \
+            git checkout -B '$REF' 'origin/$REF'; \
+            git log -1 --oneline"
+
+      - name: Instalar dependências
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; cd $APP_DIR/backend; npm install --omit=dev --no-audit --no-fund"
+
+      - name: Aplicar schema (tabelas LGPD e índice do CNAE secundário)
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; cd $APP_DIR; \
+            DB=\$(grep '^DATABASE_URL' backend/.env | head -1 | cut -d'=' -f2-); \
+            psql \"\$DB\" -v ON_ERROR_STOP=1 -f backend/db/schema.sql"
+
+      - name: Importar Simples Nacional (MEI)
+        if: ${{ github.event.inputs.importar_simples == 'true' }}
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; cd $APP_DIR; \
+            DATABASE_URL=\$(grep '^DATABASE_URL' backend/.env | head -1 | cut -d'=' -f2-) \
+            bash backend/db/import-simples.sh 2>&1 | tail -20"
+
+      - name: Reiniciar API
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; cd $APP_DIR; \
+            pm2 reload empresas-api --update-env || pm2 start deploy/pm2.config.js; \
+            sleep 5; pm2 status empresas-api"
+
+      - name: Verificar
+        run: |
+          ssh $SSH_OPTS $VPS "set -e; \
+            curl -fsS http://127.0.0.1:3002/api/health; echo; \
+            curl -fsS -o /dev/null -w 'página /pr/curitiba: %{http_code}\n' http://127.0.0.1:3002/pr/curitiba; \
+            curl -fsS 'http://127.0.0.1:3002/api/estados/info' | head -c 200; echo"
