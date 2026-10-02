@@ -148,6 +148,10 @@ CREATE INDEX IF NOT EXISTS idx_est_mun_cnae_sit
 CREATE INDEX IF NOT EXISTS idx_est_uf_cnae_sit
   ON estabelecimento (uf, cnae_fiscal, situacao_cadastral);
 
+-- Data de abertura: filtro "abertas nos últimos N dias" e aberturas do mês no mapa
+CREATE INDEX IF NOT EXISTS idx_est_abertura
+  ON estabelecimento (data_inicio_atividade);
+
 -- CNAE secundário ("5510801,5590699" → array) — a API usa exatamente esta expressão
 CREATE INDEX IF NOT EXISTS idx_est_cnae_sec
   ON estabelecimento USING gin ((string_to_array(cnae_fiscal_secundaria, ',')));

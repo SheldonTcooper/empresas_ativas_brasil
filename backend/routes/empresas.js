@@ -124,7 +124,10 @@ function montarFiltro(q, { soEscopo = false } = {}) {
   if (q.tem_email === '1')    where.push(`coalesce(trim(est.correio_eletronico), '') <> ''`);
   if (q.sem_contador === '1') where.push(`coalesce(est.correio_eletronico, '') !~* '${RE_CONTADOR_SQL}'`);
 
-  return { where, params, cnaes };
+  // A contagem só junta empresa/simples quando algum filtro usa essas tabelas (bem mais rápido no estado inteiro)
+  const usaEmpresa = !!texto || !!COD_PORTE[porte];
+  const usaSimples = !!porte || ['simples', 'mei', 'fora'].includes(regime);
+  return { where, params, cnaes, usaEmpresa, usaSimples };
 }
 
 const FILTROS_EXTRAS = ['q', 'porte', 'regime', 'abertura_dias', 'bairro', 'tipo', 'tem_telefone', 'tem_whatsapp', 'tem_email', 'sem_contador', 'secundario', 'segmento'];
@@ -247,7 +250,10 @@ router.get('/', async (req, res, next) => {
         LIMIT $${nP + 1} OFFSET $${nP + 2}
       `, [...filtro.params, lim, offset]),
 
-      pool.query(`SELECT COUNT(*) AS total ${FROM_EMPRESAS} WHERE ${where}`, filtro.params),
+      pool.query(`SELECT COUNT(*) AS total FROM estabelecimento est
+        ${filtro.usaEmpresa ? 'JOIN empresa e ON e.cnpj_basico = est.cnpj_basico' : ''}
+        ${filtro.usaSimples ? 'LEFT JOIN simples s ON s.cnpj_basico = est.cnpj_basico' : ''}
+        WHERE ${where}`, filtro.params),
     ]);
 
     const empresas = data.rows.map(r => {
@@ -367,20 +373,35 @@ router.get('/cnaes', async (req, res, next) => {
 
 function listarCnaes({ municipio, estado }) {
   const [col, valor] = municipio ? ['est.municipio', municipio] : ['est.uf', estado];
-  return comCache(`cnaes:${col}:${valor}`, async () => (await pool.query(`
-    SELECT est.cnae_fiscal, c.descricao, COUNT(*) AS total
-    FROM estabelecimento est
-    LEFT JOIN cnae c ON c.codigo = est.cnae_fiscal
-    WHERE ${col} = $1 AND est.situacao_cadastral = '02'
-      AND NOT EXISTS (SELECT 1 FROM cnpj_oculto o WHERE o.cnpj = est.cnpj_basico || est.cnpj_ordem || est.cnpj_dv)
-    GROUP BY est.cnae_fiscal, c.descricao
-    ORDER BY total DESC, est.cnae_fiscal
-    LIMIT 2000
-  `, [valor])).rows.map(r => ({
-    cnae: r.cnae_fiscal,
-    descricao: r.descricao || 'Não classificado',
-    total: parseInt(r.total),
-  })));
+  return comCache(`cnaes:${col}:${valor}`, async () => {
+    // Contagem lida só do índice (municipio|uf, cnae_fiscal, situacao_cadastral);
+    // os CNPJs ocultados (LGPD) são poucos e descontados à parte
+    const [contagem, ocultos, descricoes] = await Promise.all([
+      pool.query(`
+        SELECT est.cnae_fiscal, COUNT(*) AS total
+        FROM estabelecimento est
+        WHERE ${col} = $1 AND est.situacao_cadastral = '02'
+        GROUP BY est.cnae_fiscal`, [valor]),
+      pool.query(`
+        SELECT est.cnae_fiscal, COUNT(*) AS total
+        FROM cnpj_oculto o
+        JOIN estabelecimento est ON est.cnpj_basico = substr(o.cnpj, 1, 8) AND est.cnpj_ordem = substr(o.cnpj, 9, 4) AND est.cnpj_dv = substr(o.cnpj, 13, 2)
+        WHERE ${col} = $1 AND est.situacao_cadastral = '02'
+        GROUP BY est.cnae_fiscal`, [valor]),
+      descricoesCnae(),
+    ]);
+    const menos = Object.fromEntries(ocultos.rows.map(r => [r.cnae_fiscal, parseInt(r.total)]));
+    return contagem.rows
+      .map(r => ({ cnae: r.cnae_fiscal, descricao: descricoes[r.cnae_fiscal] || 'Não classificado', total: parseInt(r.total) - (menos[r.cnae_fiscal] || 0) }))
+      .filter(r => r.total > 0)
+      .sort((x, y) => (y.total - x.total) || x.cnae.localeCompare(y.cnae))
+      .slice(0, 2000);
+  });
+}
+
+function descricoesCnae() {
+  return comCache('cnae:descricoes', async () =>
+    Object.fromEntries((await pool.query('SELECT codigo, descricao FROM cnae')).rows.map(r => [r.codigo, r.descricao])));
 }
 
 /* ── GET /api/empresas/cnpj/:cnpj ── enriquecimento individual ── */

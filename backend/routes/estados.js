@@ -8,15 +8,14 @@ const ESTADOS = require('../lib/estados');
 let totais = null;
 function calcularTotais() {
   return comCache('estados:totais', async () => {
-    const { rows } = await pool.query(`
-      SELECT uf,
-             COUNT(*) AS ativas,
-             COUNT(*) FILTER (WHERE data_inicio_atividade >= CURRENT_DATE - 30) AS aberturas_30d
-      FROM estabelecimento
-      WHERE situacao_cadastral = '02'
-      GROUP BY uf
-    `);
-    totais = Object.fromEntries(rows.map(r => [r.uf, { ativas: parseInt(r.ativas), aberturas_30d: parseInt(r.aberturas_30d) }]));
+    // Duas consultas que usam só índices: (uf, situacao_cadastral, …) e (data_inicio_atividade)
+    const [ativas, aberturas] = await Promise.all([
+      pool.query(`SELECT uf, COUNT(*) AS n FROM estabelecimento WHERE situacao_cadastral = '02' GROUP BY uf`),
+      pool.query(`SELECT uf, COUNT(*) AS n FROM estabelecimento
+                  WHERE data_inicio_atividade >= CURRENT_DATE - 30 AND situacao_cadastral = '02' GROUP BY uf`),
+    ]);
+    const novas = Object.fromEntries(aberturas.rows.map(r => [r.uf, parseInt(r.n)]));
+    totais = Object.fromEntries(ativas.rows.map(r => [r.uf, { ativas: parseInt(r.n), aberturas_30d: novas[r.uf] || 0 }]));
     return totais;
   });
 }
