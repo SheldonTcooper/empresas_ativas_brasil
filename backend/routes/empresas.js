@@ -181,18 +181,34 @@ function fmtCNPJ(b, o, d) {
   return `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5,8)}/${s.slice(8,12)}-${s.slice(12)}`;
 }
 
+const limpa = v => String(v || '').replace(/\s+/g, ' ').trim();
+
+// Nome para buscar a empresa: fantasia ou razão social sem o CNPJ que o MEI leva no início
+function nomeBusca(r) {
+  return limpa(r.nome_fantasia) || limpa(r.razao_social).replace(/^\d{2}\.\d{3}\.\d{3}\s*/, '');
+}
+
+// "RUA" + "INAJA" + "1249" → "RUA INAJA, 1249" (sem complemento e sem "SN", que confundem o Maps)
+function enderecoBusca(r) {
+  const rua = limpa(`${r.tipo_logradouro || ''} ${r.logradouro || ''}`);
+  let num = limpa(r.numero);
+  if (/^(s\/?n|sn|s\.n\.?|0+)$/i.test(num) || rua.endsWith(` ${num}`)) num = '';
+  const cep = r.cep && /^\d{8}$/.test(r.cep) ? `${r.cep.slice(0,5)}-${r.cep.slice(5)}` : '';
+  return [rua, num, limpa(r.bairro), `${limpa(r.municipio_nome)} - ${r.uf}`, cep].filter(Boolean).join(', ');
+}
+
 function buildLinks(r) {
-  const nome  = (r.nome_fantasia || r.razao_social || '').trim();
-  const end   = [r.tipo_logradouro, r.logradouro, r.numero, r.complemento, r.bairro,
-                 `${r.municipio_nome} - ${r.uf}`, r.cep].filter(Boolean).join(', ');
-  const nq    = encodeURIComponent(nome);
-  const endq  = encodeURIComponent(end);
+  const nome = nomeBusca(r);
+  const nq   = encodeURIComponent(nome);
+  const cidade = `${limpa(r.municipio_nome)} ${r.uf || ''}`.trim();
   return {
-    maps:      `https://www.google.com/maps/search/?api=1&query=${endq}`,
+    // nome + endereço: o Maps abre a ficha do negócio quando existe, ou cai no endereço
+    maps:      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([nome, enderecoBusca(r)].filter(Boolean).join(', '))}`,
+    google:    `https://www.google.com/search?q=${encodeURIComponent(`${nome} ${cidade}`)}`,
     linkedin:  `https://www.linkedin.com/search/results/companies/?keywords=${nq}`,
     instagram: `https://www.instagram.com/explore/search/keyword/?q=${nq}`,
     tiktok:    `https://www.tiktok.com/search?q=${nq}`,
-    facebook:  `https://www.facebook.com/search/pages/?q=${nq}`,
+    facebook:  `https://www.facebook.com/search/pages/?q=${encodeURIComponent(`${nome} ${limpa(r.municipio_nome)}`)}`,
   };
 }
 

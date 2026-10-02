@@ -1190,7 +1190,7 @@ function renderTabela(dados){
         ${link('l-in', e.linkedin, 'in', 'LinkedIn')}
         ${link('l-ig', e.instagram, 'IG', 'Instagram')}
         ${link('l-fb', e.facebook, 'f', 'Facebook')}
-        ${link('l-web', `https://www.google.com/search?q=${nomeQ}`, '🌐', 'Buscar site')}
+        ${link('l-web', e.google || `https://www.google.com/search?q=${nomeQ}`, '🌐', 'Buscar no Google')}
       </div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--muted)">Nenhuma empresa encontrada${filtrosAtivos() ? ' com esses filtros' : ''}.</td></tr>`;
