@@ -344,7 +344,8 @@ router.get('/busca-nome', async (req, res, next) => {
   if (q.length < 3) return res.status(400).json({ error: 'Digite pelo menos 3 letras.' });
   if (q.length > 80) return res.status(400).json({ error: 'Texto muito longo.' });
   const padrao = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
-  const ONDE = `est.nome_fantasia ILIKE $1
+  // as duas primeiras condições repetem o WHERE do índice parcial busca_fantasia_trgm; sem elas o índice não é usado
+  const ONDE = `est.nome_fantasia IS NOT NULL AND est.nome_fantasia <> '' AND est.nome_fantasia ILIKE $1
         AND NOT EXISTS (SELECT 1 FROM cnpj_oculto o WHERE o.cnpj = est.cnpj_basico || est.cnpj_ordem || est.cnpj_dv)`;
   try {
     const [data, count] = await Promise.all([
