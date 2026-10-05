@@ -358,8 +358,12 @@ router.get('/busca-nome', async (req, res, next) => {
         LEFT JOIN municipio m ON m.codigo = est.municipio
         LEFT JOIN cnae c ON c.codigo = est.cnae_fiscal
         WHERE ${ONDE}
-        ORDER BY (lower(est.nome_fantasia) = lower($2)) DESC, est.identificador_matriz_filial ASC, est.uf, municipio_nome
-        LIMIT 40`, [padrao, q]),
+        ORDER BY CASE WHEN lower(est.nome_fantasia) = lower($2) THEN 0
+                      WHEN est.nome_fantasia ILIKE $3 || '%' THEN 1
+                      WHEN est.nome_fantasia ILIKE '% ' || $3 || '%' THEN 2
+                      ELSE 3 END,
+                 est.identificador_matriz_filial ASC, est.nome_fantasia, est.uf, municipio_nome
+        LIMIT 40`, [padrao, q, q.replace(/[\\%_]/g, '\\$&')]),
       // conta até 1000: suficiente para "quantas unidades" sem varrer a base toda
       pool.query(`SELECT count(*) AS total FROM (SELECT 1 FROM busca est WHERE ${ONDE} LIMIT 1000) t`, [padrao]),
     ]);
