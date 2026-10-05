@@ -31,7 +31,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Ro
 .app{display:flex;flex-direction:column;height:100vh;}
 
 /* HEADER */
-.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;z-index:50;}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;position:relative;z-index:2000;}
 .logo{font-size:19px;font-weight:800;color:#fff;display:flex;align-items:center;gap:2px;margin:0;}
 .logo .ativas{color:var(--accent2);}
 .badge-br{background:var(--panel2);border:1px solid var(--border2);color:var(--muted);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:8px;letter-spacing:0.5px;}
@@ -40,6 +40,20 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Ro
 .crumb .sep{color:var(--muted2);margin:0 6px;}
 .spacer{flex:1;}
 .counter{background:var(--panel2);border:1px solid var(--border2);color:var(--accent2);font-weight:700;font-size:13px;padding:6px 14px;border-radius:8px;}
+
+/* CLIMA (tempo no momento) */
+.clima{position:relative;}
+.clima-chip{background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.clima-chip:hover{border-color:var(--accent);}
+.clima-chip small{color:var(--muted);font-weight:600;margin-left:6px;}
+.clima-pop{display:none;position:absolute;right:0;top:calc(100% + 8px);width:320px;max-height:70vh;overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);z-index:700;padding:12px 14px;}
+.clima-pop.aberto{display:block;}
+.clima-pop h4{line-height:1.5;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.clima-pop .lin{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--border);}
+.clima-pop .lin:last-child{border-bottom:0;}
+.clima-pop .lin span:last-child{font-weight:700;color:var(--accent2);white-space:nowrap;}
+.clima-det{font-size:12.5px;color:var(--text);line-height:1.6;}
+@media (max-width:768px){.clima{order:2;}.clima-pop{right:auto;left:0;width:min(320px,calc(100vw - 24px));}}
 
 /* TOOLBAR (aparece na visão tabela) */
 .toolbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -328,6 +342,10 @@ th.ord.on .seta{color:var(--accent2);}
     <span class="badge-br">BR Brasil</span>
     <div class="crumb" id="crumb"></div>
     <div class="spacer"></div>
+    <div class="clima" id="clima">
+      <button class="clima-chip" id="clima-chip" type="button" aria-label="Tempo no momento">🌡️ Clima…</button>
+      <div class="clima-pop" id="clima-pop"></div>
+    </div>
     <div class="counter" id="counter-total">23.148.920 empresas ativas</div>
   </div>
 
@@ -715,6 +733,7 @@ const estadosPronto = carregarEstadosInfo();
 
 /* ===================== NAVEGAÇÃO ===================== */
 function setCrumb(parts){
+  atualizarClimaPorCrumb(parts);
   document.getElementById('crumb').innerHTML = parts.map((p,i)=>{
     const isLast = i===parts.length-1;
     return (i>0?'<span class="sep">›</span>':'') + (isLast?`<b>${esc(p)}</b>`:`<span>${esc(p)}</span>`);
@@ -737,6 +756,62 @@ const cacheMunicipios = {};
   document.head.appendChild(s);
 })();
 
+/* ===================== CLIMA (tempo no momento) ===================== */
+const climaMem = {};
+let climaPedido = 0;
+async function buscarClima(uf, municipio){
+  const chave = `${uf||''}|${municipio||''}`;
+  if(climaMem[chave] && Date.now()-climaMem[chave].ts < 10*60*1000) return climaMem[chave].v;
+  const q = new URLSearchParams(); if(uf) q.set('uf', uf); if(municipio) q.set('municipio', municipio);
+  const r = await fetch('/api/clima?'+q);
+  if(!r.ok) throw new Error('clima');
+  const v = await r.json();
+  climaMem[chave] = { ts: Date.now(), v };
+  return v;
+}
+const fmtTemp = n => n==null ? '—' : `${Math.round(n)}°C`;
+function climaDetalhe(c){
+  return `<div class="clima-det">${c.icone} <b>${fmtTemp(c.temp)}</b> · ${esc(c.descricao)}<br>Sensação ${fmtTemp(c.sensacao)} · Umidade ${c.umidade ?? '—'}% · Vento ${c.vento ?? '—'} km/h · Chuva ${c.chuva ?? 0} mm</div>`;
+}
+function atualizarClimaPorCrumb(parts){
+  const uf = parts && parts[1] ? String(parts[1]).slice(0,2) : '';
+  const mun = parts && parts[2] && parts[2] !== 'Todo o estado' ? parts[2] : '';
+  mostrarClimaTopo(uf, mun);
+}
+async function mostrarClimaTopo(uf, municipio){
+  const chip = document.getElementById('clima-chip'), pop = document.getElementById('clima-pop');
+  if(!chip) return;
+  const eu = ++climaPedido;
+  try{
+    const c = await buscarClima(uf, municipio);
+    if(eu !== climaPedido) return;
+    if(c.escopo === 'brasil'){
+      chip.innerHTML = `🇧🇷 Brasil agora: <b>${fmtTemp(c.media)}</b> <small>média das capitais</small>`;
+      pop.innerHTML = `<h4>Capitais agora · mín ${esc(c.min.cidade)} ${fmtTemp(c.min.temp)} · máx ${esc(c.max.cidade)} ${fmtTemp(c.max.temp)}</h4>` +
+        c.itens.slice().sort((a,b)=> a.cidade.localeCompare(b.cidade,'pt-BR')).map(i=>`<div class="lin"><span>${i.icone} ${esc(i.cidade)} (${esc(i.uf)})</span><span>${fmtTemp(i.temp)}</span></div>`).join('');
+    }else{
+      const nome = c.aproximado ? `${municipio} (capital ${c.local})` : c.local;
+      chip.innerHTML = `${c.icone} ${esc(c.local)}${c.aproximado?'*':''}: <b>${fmtTemp(c.temp)}</b> <small>${esc(c.descricao)}</small>`;
+      pop.innerHTML = `<h4>${esc(nome)} · ${esc(c.uf)}${c.aproximado?' · local exato não encontrado':''}</h4>${climaDetalhe(c)}`;
+    }
+  }catch(e){
+    if(eu === climaPedido){ chip.textContent = '🌡️ Clima indisponível'; pop.innerHTML = ''; }
+  }
+}
+document.getElementById('clima-chip').addEventListener('click', ev=>{
+  ev.stopPropagation(); document.getElementById('clima-pop').classList.toggle('aberto');
+});
+document.addEventListener('click', ev=>{ if(!document.getElementById('clima').contains(ev.target)) document.getElementById('clima-pop').classList.remove('aberto'); });
+async function carregarClimaPainelEstado(uf){
+  const el = document.getElementById('side-clima');
+  try{
+    const c = await buscarClima(uf, '');
+    if(estadoAtual !== uf || !document.getElementById('side-clima')) return;
+    document.getElementById('side-clima').innerHTML = `<div><div class="t">${c.icone} Clima agora em ${esc(c.local)}</div><div class="s">${esc(c.descricao)} · sensação ${fmtTemp(c.sensacao)} · vento ${c.vento ?? '—'} km/h</div></div><div style="font-weight:800;font-size:16px;">${fmtTemp(c.temp)}</div>`;
+  }catch(e){ if(el) el.remove(); }
+}
+mostrarClimaTopo('', '');
+
 function selecionarEstado(uf){
   estadoAtual = uf;
   const info = estadosInfo[uf];
@@ -757,12 +832,14 @@ function mostrarPainelEstado(uf, info){
   const aberturas = info.aberturas_30d != null ? info.aberturas_30d.toLocaleString('pt-BR') : '—';
   document.getElementById('side-list').innerHTML = `
     <div class="side-item" onclick="irParaMunicipios('${esc(uf)}')" style="cursor:pointer;justify-content:center;background:var(--accent);color:#fff;font-weight:700;">Ver municípios e empresas →</div>
+    <div class="side-item" id="side-clima"><div class="s">Carregando clima…</div></div>
     <div class="side-item"><div class="t">🏢 Empresas ativas</div><div>${(info.empresas_ativas||0).toLocaleString('pt-BR')}</div></div>
     <div class="side-item"><div class="t">🆕 Abertas nos últimos 30 dias</div><div>${aberturas}</div></div>
     <div class="side-sub">Atividades com mais empresas</div>
     <div id="side-top-cnaes"><div class="side-item"><div class="s">Carregando...</div></div></div>
   `;
   abrirPainel();
+  carregarClimaPainelEstado(uf);
   carregarTopCnaesEstado(uf);
 }
 
