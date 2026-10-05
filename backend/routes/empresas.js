@@ -337,6 +337,48 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/* ── GET /api/empresas/busca-nome?q=coamo ── unidades pelo nome fantasia, no Brasil todo ──
+   Usa o índice pg_trgm de db/indice_fantasia.sql (sem ele a busca funciona, mas é lenta). */
+router.get('/busca-nome', async (req, res, next) => {
+  const q = String(req.query.q || '').trim().replace(/\s+/g, ' ');
+  if (q.length < 3) return res.status(400).json({ error: 'Digite pelo menos 3 letras.' });
+  if (q.length > 80) return res.status(400).json({ error: 'Texto muito longo.' });
+  const padrao = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+  const ONDE = `est.nome_fantasia ILIKE $1
+        AND NOT EXISTS (SELECT 1 FROM cnpj_oculto o WHERE o.cnpj = est.cnpj_basico || est.cnpj_ordem || est.cnpj_dv)`;
+  try {
+    const [data, count] = await Promise.all([
+      pool.query(`
+        SELECT est.cnpj_basico, est.cnpj_ordem, est.cnpj_dv, est.nome_fantasia, est.razao_social,
+               est.identificador_matriz_filial, est.uf, est.municipio, est.cnae_fiscal,
+               COALESCE(m.descricao, est.municipio::text) AS municipio_nome,
+               c.descricao AS cnae_desc
+        FROM busca est
+        LEFT JOIN municipio m ON m.codigo = est.municipio
+        LEFT JOIN cnae c ON c.codigo = est.cnae_fiscal
+        WHERE ${ONDE}
+        ORDER BY (lower(est.nome_fantasia) = lower($2)) DESC, est.identificador_matriz_filial ASC, est.uf, municipio_nome
+        LIMIT 40`, [padrao, q]),
+      // conta até 1000: suficiente para "quantas unidades" sem varrer a base toda
+      pool.query(`SELECT count(*) AS total FROM (SELECT 1 FROM busca est WHERE ${ONDE} LIMIT 1000) t`, [padrao]),
+    ]);
+    res.json({
+      total: parseInt(count.rows[0].total),
+      resultados: data.rows.map(r => ({
+        cnpj: fmtCNPJ(r.cnpj_basico, r.cnpj_ordem, r.cnpj_dv),
+        fantasia: r.nome_fantasia.trim(),
+        razao: r.razao_social?.trim() || '',
+        tipo: r.identificador_matriz_filial === '1' ? 'Matriz' : 'Filial',
+        uf: r.uf,
+        municipio: r.municipio_nome,
+        municipioCodigo: r.municipio,
+        cnae: r.cnae_fiscal || '',
+        cnaeDescricao: r.cnae_desc || '',
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
 /* ── GET /api/empresas/bairros?municipio=…&cnae=… ── bairros do escopo, por volume ── */
 router.get('/bairros', async (req, res, next) => {
   if (req.query.segmento) { try { await prepararSegmentos(); } catch (err) { return next(err); } }

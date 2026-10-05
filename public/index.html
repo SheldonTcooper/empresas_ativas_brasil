@@ -104,7 +104,28 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Ro
 .legend-swatch{width:22px;height:13px;border-radius:3px;}
 .map-hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:12px;z-index:400;background:rgba(17,24,52,0.85);padding:5px 14px;border-radius:20px;border:1px solid var(--border);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
 .leaflet-interactive:focus{outline:none;}
-.state-tooltip{background:var(--panel) !important;border:1px solid var(--border2) !important;color:var(--text) !important;font-size:12px !important;border-radius:6px !important;box-shadow:0 4px 16px rgba(0,0,0,0.4) !important;}
+.state-tooltip{background:#fffbe3 !important;border:1px solid #e6d98a !important;border-left:5px solid #f5c400 !important;color:#1f2937 !important;font-size:12px !important;border-radius:4px !important;box-shadow:0 6px 18px rgba(0,0,0,0.45) !important;padding:8px 12px !important;}
+.state-tooltip::before{display:none !important;}
+.nota-estado{display:flex;align-items:center;gap:10px;}
+.nota-estado img{width:34px;height:23px;object-fit:cover;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.35);}
+.nota-estado b{display:block;font-size:13.5px;color:#111827;}
+.nota-estado span{font-size:11.5px;color:#4b5563;}
+/* Busca por nome fantasia (página inicial) */
+.busca-nome{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));z-index:460;}
+.busca-nome input{width:100%;background:rgba(17,24,52,.96);border:1px solid var(--border2);color:var(--text);padding:12px 16px;border-radius:10px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35);}
+.busca-nome input:focus{outline:none;border-color:var(--accent);}
+.busca-lista{display:none;margin-top:6px;max-height:min(60vh,430px);overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);}
+.busca-lista.aberta{display:block;}
+.busca-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
+.busca-item:last-child{border-bottom:0;}
+.busca-item:hover,.busca-item.sel{background:var(--panel2);}
+.busca-item .n{font-weight:700;font-size:13.5px;color:#fff;}
+.busca-item .r{font-size:11px;color:var(--muted);margin-top:2px;}
+.busca-item .l{font-size:12px;color:var(--accent2);font-weight:700;white-space:nowrap;text-align:right;}
+.busca-item .l small{display:block;color:var(--muted);font-weight:600;font-size:10.5px;}
+.busca-msg{padding:14px;color:var(--muted);font-size:12.5px;}
+.busca-topo{padding:8px 14px;font-size:11px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);}
+.map-hint{top:64px !important;}
 .state-label{background:transparent;border:none;box-shadow:none;color:#fff;font-weight:900;font-size:11px;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 4px #000;text-align:center;}
 
 /* PAINEL LATERAL (municipios / cnaes) */
@@ -364,6 +385,10 @@ th.ord.on .seta{color:var(--accent2);}
           <div class="ticker"><div class="trilho" id="trilho-economia"></div></div>
         </aside>
         <div class="mapa-area">
+          <div class="busca-nome" id="busca-nome">
+            <input type="search" id="busca-fantasia" placeholder="🔍 Buscar empresa pelo nome fantasia (ex.: Coamo)" autocomplete="off" aria-label="Buscar empresa pelo nome fantasia">
+            <div class="busca-lista" id="busca-lista" role="listbox"></div>
+          </div>
           <div id="map"></div>
           <div class="map-hint" id="map-hint">Clique em um estado para explorar · passe o mouse para ver o total</div>
         </div>
@@ -529,7 +554,7 @@ let cnaesData = null; // {itens:[{c,d,total,s,busca}]} carregado de /api/empresa
 
 let estadoAtual=null, municipioAtual=null, cnaeAtual=null, dadosAtuais=[];
 
-/* ===================== MAPA (fixo, cada estado com a sua bandeira) ===================== */
+/* ===================== MAPA (fixo, verde/amarelo/azul alternados) ===================== */
 const map = L.map('map',{
   zoomControl:false, attributionControl:false,
   dragging:false, touchZoom:false, scrollWheelZoom:false, doubleClickZoom:false, boxZoom:false, keyboard:false,
@@ -542,13 +567,20 @@ const ESTILO_BORDA = { color:'#0a0e27', weight:1.2 };
 const ESTILO_HOVER = { color:'#ffffff', weight:2.6 };
 const ESTILO_ATIVO = { color:'#facc15', weight:3 };
 
+// Cores da bandeira do Brasil (verde, amarelo, azul) alternadas entre estados vizinhos.
+// Com 3 cores só um par de vizinhos (MG/MS) repete a cor: não existe arranjo melhor.
+const CORES_BR = ['#009c3b','#ffdf00','#1d4ed8'];
+const COR_ESTADO = {AC:2,AM:1,RR:2,AP:1,PA:0,RO:0,MT:2,TO:1,MA:2,PI:0,CE:2,RN:1,PB:0,PE:1,AL:0,SE:1,BA:2,GO:0,DF:1,MG:1,ES:0,RJ:2,SP:0,MS:1,PR:2,SC:0,RS:1};
+function corDoEstado(uf){ return CORES_BR[COR_ESTADO[uf]] ?? CORES_BR[0]; }
+
 function tooltipEstado(uf){
   const info = estadosInfo[uf];
-  return info ? `<b>${esc(info.nome)}</b><br>${(info.empresas_ativas||0).toLocaleString('pt-BR')} empresas ativas` : esc(uf);
+  if(!info) return esc(uf);
+  return `<div class="nota-estado"><img src="/flags/${esc(uf)}.svg" alt="Bandeira ${esc(info.nome)}"><div><b>${esc(info.nome)}</b><span>${(info.empresas_ativas||0).toLocaleString('pt-BR')} empresas ativas</span></div></div>`;
 }
 
 const geoLayer = L.geoJSON(GEOJSON_ESTADOS,{
-  style: ()=> ({ fillColor:'#283055', fillOpacity:1, ...ESTILO_BORDA }),
+  style: f=> ({ fillColor: corDoEstado(f.properties.sigla), fillOpacity:1, ...ESTILO_BORDA }),
   onEachFeature: (feature,layer)=>{
     const uf = feature.properties.sigla;
     estadoLayers[uf] = layer;
@@ -566,6 +598,7 @@ const geoLayer = L.geoJSON(GEOJSON_ESTADOS,{
 // Preenche cada estado com a imagem da sua bandeira (padrão SVG do tamanho do estado na tela)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function aplicarBandeiras(){
+  return; // mapa agora usa só as cores do Brasil (corDoEstado)
   const svg = map.getPanes().overlayPane.querySelector('svg');
   if(!svg) return;
   let defs = svg.querySelector('defs#bandeiras');
@@ -600,7 +633,7 @@ function aplicarBandeiras(){
 // O mapa não se move: só se reenquadra quando o espaço muda (janela, painel, troca de tela)
 function enquadrarMapa(){
   map.invalidateSize();
-  try{ map.fitBounds(geoLayer.getBounds(), { padding:[14,14], animate:false }); }catch(e){}
+  try{ map.fitBounds(geoLayer.getBounds(), { paddingTopLeft:[14,76], paddingBottomRight:[14,14], animate:false }); }catch(e){}
   requestAnimationFrame(aplicarBandeiras);
 }
 let timerEnquadrar = null;
@@ -798,6 +831,53 @@ async function carregarMapaEstado(uf){
 }
 
 
+/* ===================== BUSCA POR NOME FANTASIA ===================== */
+(function(){
+  const inp = document.getElementById('busca-fantasia');
+  const lista = document.getElementById('busca-lista');
+  let timer = null, seq = 0, itens = [];
+  const fechar = ()=> lista.classList.remove('aberta');
+  function msg(t){ lista.innerHTML = `<div class="busca-msg">${esc(t)}</div>`; lista.classList.add('aberta'); }
+  async function buscar(){
+    const q = inp.value.trim();
+    if(q.length < 3){ if(q.length) msg('Digite pelo menos 3 letras…'); else fechar(); return; }
+    const eu = ++seq;
+    msg('Buscando…');
+    try{
+      const r = await fetch(`/api/empresas/busca-nome?q=${encodeURIComponent(q)}`);
+      if(!r.ok) throw new Error();
+      const d = await r.json();
+      if(eu !== seq) return;
+      itens = d.resultados || [];
+      if(!itens.length){ msg('Nenhuma empresa encontrada com esse nome.'); return; }
+      const mais = d.total > itens.length ? `${d.total.toLocaleString('pt-BR')}${d.total>=1000?'+':''} unidades encontradas · mostrando ${itens.length}` : `${d.total.toLocaleString('pt-BR')} unidade(s) encontrada(s)`;
+      lista.innerHTML = `<div class="busca-topo">${mais}</div>` + itens.map((e,i)=>`
+        <div class="busca-item" role="option" data-i="${i}">
+          <div><div class="n">${esc(e.fantasia)}</div><div class="r">${esc(e.razao)} · ${esc(e.tipo)} · CNPJ ${esc(e.cnpj)}</div></div>
+          <div class="l">${esc(e.municipio)} / ${esc(e.uf)}</div>
+        </div>`).join('');
+      lista.classList.add('aberta');
+    }catch(err){ if(eu === seq) msg('Não foi possível buscar agora. Tente de novo.'); }
+  }
+  async function abrir(e){
+    fechar(); inp.blur();
+    if(!estadosInfo[e.uf]) return;
+    cnaesData = null;
+    await irParaMunicipios(e.uf);
+    await selecionarMunicipio(String(e.municipioCodigo), e.municipio);
+    selecionarAtividade({ c: e.cnae, d: e.cnaeDescricao || fmtCnae(e.cnae) });
+    document.getElementById('filtro-empresas').value = e.fantasia;
+    aplicarFiltros();
+  }
+  inp.addEventListener('input', ()=>{ clearTimeout(timer); timer = setTimeout(buscar, 300); });
+  inp.addEventListener('focus', ()=>{ if(lista.innerHTML) lista.classList.add('aberta'); });
+  inp.addEventListener('keydown', ev=>{ if(ev.key === 'Escape'){ fechar(); inp.blur(); } });
+  lista.addEventListener('click', ev=>{
+    const el = ev.target.closest('.busca-item'); if(el) abrir(itens[+el.dataset.i]);
+  });
+  document.addEventListener('click', ev=>{ if(!document.getElementById('busca-nome').contains(ev.target)) fechar(); });
+})();
+
 function renderListaMunicipios(container, lista, filtro){
   const f = norm(filtro).trim();
   const filtrada = f ? lista.filter(m=>norm(m.municipio).includes(f)) : lista;
@@ -814,6 +894,7 @@ function renderListaMunicipios(container, lista, filtro){
   const inp = document.getElementById('municipio-search');
   inp.addEventListener('input', ()=> renderListaMunicipios(container, lista, inp.value));
   inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length); // cursor no fim: senão "cu" vira "uc"
   Array.from(container.querySelectorAll('.rc-mun-item')).forEach(item=>{
     item.addEventListener('click', ()=> selecionarMunicipio(item.dataset.codigo || null, item.dataset.nome));
   });
