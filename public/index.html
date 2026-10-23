@@ -642,7 +642,7 @@ function tempoAtras(iso){
 function htmlNoticia(n, copia){
   const foco = copia ? ' tabindex="-1"' : '';
   return `<a class="noticia" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer"${foco}>
-    <div class="meta">${esc(n.fonte)}${n.data ? ' · ' + tempoAtras(n.data) : ''}</div>
+    <div class="meta">${esc(n.fonte)}${n.data ? ` · <span class="quando" data-iso="${esc(n.data)}">${tempoAtras(n.data)}</span>` : ''}</div>
     <div class="tit">${esc(n.titulo)}</div></a>`;
 }
 
@@ -654,11 +654,20 @@ function preencherTrilho(el, itens, item, segPorItem){
   el.style.setProperty('--dur', `${Math.max(40, itens.length * segPorItem)}s`);
 }
 
+let assinaturaNoticias = '';
+function atualizarTempos(){
+  document.querySelectorAll('.noticia .quando').forEach(el=> el.textContent = tempoAtras(el.dataset.iso));
+}
+
 async function carregarNoticias(){
   try{
-    const resp = await fetch('/api/noticias');
+    const resp = await fetch('/api/noticias', {cache: 'no-cache'});
     if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const dados = await resp.json();
+    // Sem novidade: não refaz o trilho (evita reiniciar a rolagem), só atualiza os "há X min"
+    const assinatura = ['economia', 'negocios'].map(c=> (dados[c] || []).map(n=> n.link).join('|')).join('||');
+    if(assinatura === assinaturaNoticias){ atualizarTempos(); return; }
+    assinaturaNoticias = assinatura;
     for(const chave of ['economia', 'negocios']){
       const el = document.getElementById(`trilho-${chave}`);
       const itens = dados[chave] || [];
@@ -676,7 +685,9 @@ async function carregarNoticias(){
   }
 }
 carregarNoticias();
-setInterval(carregarNoticias, 15 * 60 * 1000);
+setInterval(carregarNoticias, 30 * 1000);
+setInterval(atualizarTempos, 30 * 1000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) carregarNoticias(); });
 
 const estadosPronto = carregarEstadosInfo();
 

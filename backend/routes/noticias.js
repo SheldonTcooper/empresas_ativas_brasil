@@ -1,5 +1,5 @@
 /* ── GET /api/noticias ── últimas notícias de economia e de negócios/PMEs (RSS públicos)
-   Lidas no servidor a cada 20 min (cache) e exibidas nas colunas ao lado do mapa. */
+   Lidas no servidor a cada 30 s (cache curto → quase tempo real) e exibidas nas colunas ao lado do mapa. */
 const router = require('express').Router();
 const { comCache } = require('../lib/db');
 
@@ -16,7 +16,7 @@ const FEEDS = {
   ],
 };
 const POR_COLUNA = 20;
-const CACHE_MS = 20 * 60 * 1000;
+const CACHE_MS = 30 * 1000;
 
 const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 function texto(v) {
@@ -70,7 +70,7 @@ router.get('/', async (_req, res, next) => {
       const [economia, negocios] = await Promise.all([coluna(FEEDS.economia), coluna(FEEDS.negocios)]);
       return { economia, negocios, atualizado_em: new Date().toISOString() };
     }, CACHE_MS);
-    res.set('Cache-Control', 'public, max-age=300').json(dados);
+    res.set('Cache-Control', 'public, max-age=10').json(dados);
   } catch (err) {
     next(err);
   }
